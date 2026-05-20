@@ -1,0 +1,309 @@
+.sp-secret {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  cursor: pointer;
+  user-select: none;
+  border: 1px dashed var(--text-faint);
+  line-height: 1.4;
+}
+
+.sp-secret--loading {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.sp-secret__spinner {
+  display: inline-flex;
+  vertical-align: middle;
+  animation: sp-spin 1.2s linear infinite;
+}
+
+@keyframes sp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sp-secret--masked {
+  letter-spacing: 1px;
+}
+
+.sp-secret--revealed {
+  background: var(--background-secondary);
+}
+
+.sp-secret--error {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+  border-color: var(--text-error);
+  cursor: help;
+}
+
+.sp-secret__label {
+  margin-right: 6px;
+}
+
+.sp-secret__relogin {
+  display: inline-block;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 3px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+.sp-secret__relogin:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Status bar -------------------------------------------------------------- */
+
+.sp-status {
+  display: inline-flex;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.sp-status__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 0.85em;
+}
+
+.sp-status__chip--ok {
+  background: var(--background-modifier-success);
+  color: var(--text-on-accent);
+}
+
+.sp-status__chip--out {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.sp-status__icon {
+  display: inline-flex;
+}
+
+.sp-status__icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.sp-status__ttl {
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
+/* Auth status row -------------------------------------------------------- */
+
+.sp-auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin: 0 0 12px 0;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.sp-auth-row__left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-auth-row__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.85em;
+  width: max-content;
+}
+
+.sp-auth-row__pill--loading {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.sp-auth-row__pill--in {
+  background: var(--background-modifier-success);
+  color: var(--text-on-accent);
+}
+
+.sp-auth-row__pill--out {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+}
+
+.sp-auth-row__pill-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.sp-auth-row__detail {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+.sp-auth-row__right {
+  display: flex;
+  gap: 6px;
+}
+
+/* Sidebar index view ----------------------------------------------------- */
+
+.sp-sidebar {
+  padding: 8px;
+}
+
+.sp-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sp-sidebar__title {
+  font-weight: 600;
+}
+
+.sp-sidebar__count {
+  color: var(--text-muted);
+  font-weight: normal;
+  font-size: 0.85em;
+}
+
+.sp-sidebar__refresh {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.sp-sidebar__refresh:hover {
+  color: var(--text-normal);
+}
+
+.sp-sidebar__filter {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.sp-sidebar__empty {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 16px 8px;
+}
+
+.sp-sidebar__group {
+  margin-bottom: 12px;
+}
+
+.sp-sidebar__group-header {
+  font-weight: 600;
+  font-size: 0.9em;
+  color: var(--text-accent);
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sp-sidebar__ref {
+  margin-left: 8px;
+  margin-bottom: 6px;
+}
+
+.sp-sidebar__ref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.sp-sidebar__ref-title {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-normal);
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-sidebar__ref-actions {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.sp-sidebar__ref:hover .sp-sidebar__ref-actions {
+  opacity: 1;
+}
+
+.sp-sidebar__action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.sp-sidebar__action:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.sp-sidebar__action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sp-edit__current {
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.sp-sidebar__uses {
+  margin-left: 12px;
+  margin-top: 2px;
+}
+
+.sp-sidebar__use {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  padding: 1px 0;
+}
+
+.sp-sidebar__use:hover {
+  color: var(--text-accent);
+}
+
+/* Editor suggest --------------------------------------------------------- */
+
+.sp-suggest__primary {
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+}
+
+.sp-suggest__secondary {
+  font-size: 0.8em;
+  color: var(--text-muted);
+}

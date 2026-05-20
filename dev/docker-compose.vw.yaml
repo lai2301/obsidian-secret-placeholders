@@ -1,0 +1,41 @@
+# Local Vaultwarden for testing the BitwardenProvider.
+#
+# Defaults below are LOCAL-DEV ONLY:
+#   - SIGNUPS_ALLOWED=true so you can create an account from the web UI
+#     without an SMTP server
+#   - ADMIN_TOKEN is hard-coded; rotate before exposing this anywhere
+#   - persisted to a docker volume; remove to nuke state
+#
+# Start:    docker compose -f dev/docker-compose.vw.yaml up -d
+# Stop:     docker compose -f dev/docker-compose.vw.yaml down
+# Web UI:   http://localhost:8083
+# Admin:    http://localhost:8083/admin   (token below)
+#
+# Plugin settings to use:
+#   Server URL: http://localhost:8083
+#   Email:      whatever you used to register through the web UI
+#   Master pw:  set during signup
+#
+# After signing up via the web UI: in *Account Settings -> Security ->
+# Keys* verify the KDF is **PBKDF2** (not Argon2id).  The plugin only
+# supports PBKDF2 today.
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.32.7
+    container_name: sp-vaultwarden
+    restart: unless-stopped
+    environment:
+      ADMIN_TOKEN: "local-dev-admin-token-rotate-me"
+      SIGNUPS_ALLOWED: "true"
+      INVITATIONS_ALLOWED: "false"
+      DOMAIN: "http://localhost:8083"
+      ROCKET_PORT: "80"
+      WEB_VAULT_ENABLED: "true"
+    ports:
+      - "8083:80"
+    volumes:
+      - vaultwarden-data:/data
+
+volumes:
+  vaultwarden-data:

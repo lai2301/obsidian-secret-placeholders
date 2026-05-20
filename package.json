@@ -1,0 +1,36 @@
+{
+  "name": "obsidian-secret-placeholders",
+  "version": "0.5.5",
+  "description": "Embed password-manager secrets in Obsidian notes as placeholders so the .md never contains the credential.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:watch": "bash scripts/deploy.sh --skip-build --watch"
+  },
+  "keywords": [
+    "obsidian-plugin",
+    "secrets",
+    "openbao",
+    "vault",
+    "bitwarden",
+    "1password"
+  ],
+  "author": "lai2301",
+  "license": "MIT",
+  "devDependencies": {
+    "@codemirror/state": "6.5.0",
+    "@codemirror/view": "^6.26.0",
+    "@types/node": "^20.11.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "0.20.2",
+    "obsidian": "latest",
+    "tslib": "2.6.2",
+    "typescript": "5.4.5"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.12.0"
+  }
+}

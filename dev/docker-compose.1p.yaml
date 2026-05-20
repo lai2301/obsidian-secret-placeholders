@@ -1,0 +1,56 @@
+# Local 1Password Connect server for testing the OnePasswordProvider.
+#
+# Prerequisites (one-time):
+#   1. In your 1Password account: Integrations -> Directory -> 1Password
+#      Connect Server -> "Set up new server".  Pick a name (e.g. "Local
+#      Dev"), grant access to the vaults you want to expose, then
+#      DOWNLOAD `1password-credentials.json`.
+#   2. Copy that file next to this compose file as
+#      `dev/1password-credentials.json`.  IT IS A SECRET - do not commit.
+#   3. From the same setup screen, copy the GENERATED ACCESS TOKEN; paste
+#      it into the plugin's "1Password Connect" settings tab in Obsidian.
+#
+# Start:    docker compose -f dev/docker-compose.1p.yaml up -d
+# Logs:     docker compose -f dev/docker-compose.1p.yaml logs -f
+# Stop:     docker compose -f dev/docker-compose.1p.yaml down
+#
+# Plugin settings to use:
+#   Connect server URL: http://localhost:8082
+#   Default vault:      <one of the vault names you granted access to>
+#
+# NOTE on the credentials file mount:  we declare it as `type: bind` with
+# `create_host_path: false` so Docker FAILS FAST if you haven't placed the
+# credentials file yet, instead of silently creating an empty directory
+# named `1password-credentials.json` and leaving Connect in NOT_SYNCED state.
+
+services:
+  connect-api:
+    image: 1password/connect-api:latest
+    container_name: sp-1p-connect-api
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    volumes:
+      - type: bind
+        source: ./1password-credentials.json
+        target: /home/opuser/.op/1password-credentials.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - 1p-data:/home/opuser/.op/data
+
+  connect-sync:
+    image: 1password/connect-sync:latest
+    container_name: sp-1p-connect-sync
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./1password-credentials.json
+        target: /home/opuser/.op/1password-credentials.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - 1p-data:/home/opuser/.op/data
+
+volumes:
+  1p-data:

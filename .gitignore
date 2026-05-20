@@ -1,0 +1,8 @@
+node_modules
+main.js
+main.js.map
+data.json
+.DS_Store
+
+# Local-only deploy target (keeps personal vault path out of the repo)
+scripts/.deploy-local
