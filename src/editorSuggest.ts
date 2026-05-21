@@ -203,7 +203,12 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
     const p = (async () => {
       try {
         const refs = await provider.list();
-        this.caches.set(provider.id, { fetchedAt: Date.now(), refs });
+        // Only cache a non-empty result.  An empty list usually means the
+        // provider is logged out or mid-error; caching that would hide
+        // real secrets for the full TTL once the user logs in.
+        if (refs.length > 0) {
+          this.caches.set(provider.id, { fetchedAt: Date.now(), refs });
+        }
         return refs;
       } catch {
         return [];
