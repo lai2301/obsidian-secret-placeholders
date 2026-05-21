@@ -52,7 +52,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
     id: "secrets-clear-cache",
     name: "Secrets: Clear cache",
     callback: () => {
-      plugin.registry.clearAllCaches();
+      plugin.refreshSecretData();
       new Notice("Secret cache cleared");
     },
   });
@@ -89,6 +89,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
               };
               await provider.writeKey(ref, sel);
               editor.replaceSelection(ref.raw);
+              plugin.refreshSecretData();
               new Notice(`Saved to ${ref.raw.slice(2, -2)}`);
             } catch (e) {
               new Notice(`Save failed: ${(e as Error).message}`);

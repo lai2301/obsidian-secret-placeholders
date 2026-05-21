@@ -44,6 +44,14 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
     super(app);
   }
 
+  /** Drop the cached per-provider ref lists so the next suggestion query
+   *  re-fetches.  Called after a secret is written/edited and from the
+   *  "Clear cache" command. */
+  clearCache(): void {
+    this.caches.clear();
+    this.inflight.clear();
+  }
+
   onTrigger(
     cursor: EditorPosition,
     editor: Editor,
