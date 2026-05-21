@@ -1,0 +1,77 @@
+name: Release
+
+# Runs on every push to main.  Reads the version from manifest.json and,
+# if no GitHub release exists for it yet, builds the plugin and publishes
+# a release with the three assets the Obsidian community store needs:
+# manifest.json, main.js, styles.css.
+#
+# Idempotent: merging to main without bumping manifest.json's version is
+# a no-op, so this is safe to run on every main push.
+#
+# Release ritual:
+#   1. Bump "version" in manifest.json (+ package.json, versions.json)
+#      and add a CHANGELOG entry, in the develop -> main PR.
+#   2. Merge the PR.  The release cuts itself.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Read manifest version
+        id: meta
+        run: echo "version=$(node -p "require('./manifest.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version is already released
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.meta.outputs.version }}" >/dev/null 2>&1; then
+            echo "Release ${{ steps.meta.outputs.version }} already exists - nothing to do."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install and build
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          npm ci
+          npm run build
+
+      - name: Extract changelog section for this version
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          awk -v ver="## ${{ steps.meta.outputs.version }}" '
+            $0 == ver { p = 1; next }
+            /^## / && p { exit }
+            p { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "Release ${{ steps.meta.outputs.version }}" > release-notes.md
+          fi
+
+      - name: Create GitHub release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.meta.outputs.version }}" \
+            main.js manifest.json styles.css \
+            --title "${{ steps.meta.outputs.version }}" \
+            --notes-file release-notes.md \
+            --target "${{ github.sha }}"
