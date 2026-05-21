@@ -181,6 +181,10 @@ export default class SecretPlaceholdersPlugin extends Plugin {
         /* swallow */
       }
     }
+    // A login/logout changes what each provider can enumerate, so drop the
+    // editor-suggest's ref-list cache - otherwise a stale (often empty)
+    // list lingers for the cache TTL after the user logs in.
+    this.editorSuggest?.clearCache();
     // Tell every rendered placeholder to re-fetch if it was in an error
     // state - the user probably just logged in.
     this.fireStateChange("auth");
