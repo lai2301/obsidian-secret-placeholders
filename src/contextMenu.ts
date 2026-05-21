@@ -200,6 +200,7 @@ async function saveSelectionAsSecret(
       };
       await provider.writeKey(ref, selection);
       editor.replaceSelection(ref.raw);
+      plugin.refreshSecretData();
       new Notice(`Saved to ${ref.raw.slice(2, -2)}`);
     } catch (e) {
       new Notice(`Save failed: ${(e as Error).message}`);
