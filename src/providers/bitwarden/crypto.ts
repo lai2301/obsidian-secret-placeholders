@@ -340,3 +340,70 @@ export async function unlockUserKey(
   }
   return { encKey: raw.slice(0, 32), macKey: raw.slice(32, 64) };
 }
+
+// --- RSA: organization key decryption -----------------------------------
+//
+// Organization ciphers are encrypted with the org's symmetric key, not the
+// user key.  Each org's key arrives in the sync response RSA-encrypted with
+// the user's public key; to unwrap it we need the user's RSA private key,
+// which itself arrives EncString-wrapped with the user's symmetric key.
+//
+// Flow: userKey -decrypt-> PKCS8 private key -import-> RSA key
+//       RSA key -decrypt-> org symmetric key (64 bytes)
+
+/** Both OAEP-hash variants of the user's RSA private key.  An org Key
+ *  EncString is type 3 (OAEP-SHA256) or 4/6 (OAEP-SHA1); WebCrypto binds
+ *  the hash at import time, so we import once per hash. */
+export interface RsaPrivateKey {
+  sha1: CryptoKey;
+  sha256: CryptoKey;
+}
+
+/** Decrypt the user's RSA private key (PKCS8, EncString-wrapped with the
+ *  user key) and import it for RSA-OAEP decryption. */
+export async function unlockPrivateKey(
+  userKey: SymmetricKey,
+  privateKeyEncString: string,
+): Promise<RsaPrivateKey> {
+  const pkcs8 = await decryptBytes(userKey, privateKeyEncString);
+  const importFor = (hash: "SHA-1" | "SHA-256") =>
+    crypto.subtle.importKey(
+      "pkcs8",
+      pkcs8,
+      { name: "RSA-OAEP", hash },
+      false,
+      ["decrypt"],
+    );
+  return { sha1: await importFor("SHA-1"), sha256: await importFor("SHA-256") };
+}
+
+/** Decrypt an organization's 64-byte symmetric key from its RSA EncString.
+ *  Org keys are type 3 (`3.<ct>`), 4 (`4.<ct>`) or 6 (`6.<ct>|<mac>`). */
+export async function unlockOrgKey(
+  privateKey: RsaPrivateKey,
+  orgKeyEncString: string,
+): Promise<SymmetricKey> {
+  const dot = orgKeyEncString.indexOf(".");
+  if (dot < 0) {
+    throw new BitwardenCryptoError("bad org key encString (no type prefix)");
+  }
+  const type = Number(orgKeyEncString.slice(0, dot));
+  // Type 6 appends `|<mac>`; we only need the ciphertext.
+  const ctB64 = orgKeyEncString.slice(dot + 1).split("|")[0];
+  const ct = b64decode(ctB64);
+  if (type !== 3 && type !== 4 && type !== 6) {
+    throw new BitwardenCryptoError(
+      `unsupported org key encString type '${type}'`,
+    );
+  }
+  const key = type === 3 ? privateKey.sha256 : privateKey.sha1;
+  const raw = new Uint8Array(
+    await crypto.subtle.decrypt({ name: "RSA-OAEP" }, key, ct),
+  );
+  if (raw.length !== 64) {
+    throw new BitwardenCryptoError(
+      `unexpected org key length ${raw.length} (expected 64)`,
+    );
+  }
+  return { encKey: raw.slice(0, 32), macKey: raw.slice(32, 64) };
+}
