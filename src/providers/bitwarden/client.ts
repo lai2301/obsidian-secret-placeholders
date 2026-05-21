@@ -46,10 +46,24 @@ function pick<T>(obj: Record<string, unknown>, ...keys: string[]): T | undefined
   return undefined;
 }
 
-/** A small subset of the /api/sync response - just the cipher list. */
+/** A small subset of the /api/sync response. */
 export interface SyncResponse {
   Ciphers: SyncCipher[];
   Folders: SyncFolder[];
+  Profile: SyncProfile | null;
+}
+
+/** Subset of the sync response's `Profile` we use for organization keys. */
+export interface SyncProfile {
+  /** RSA private key, EncString-wrapped with the user's symmetric key. */
+  PrivateKey: string | null;
+  Organizations: SyncProfileOrg[];
+}
+
+export interface SyncProfileOrg {
+  Id: string;
+  /** The org's symmetric key, RSA-encrypted with the user's public key. */
+  Key: string;
 }
 
 export interface SyncFolder {
@@ -82,6 +96,9 @@ export interface SyncCipher {
   Type: number; // 1=login, 2=secure note, 3=card, 4=identity
   /** Null if at vault root. */
   FolderId: string | null;
+  /** Null for a personal cipher; an org id for an organization cipher.
+   *  Org ciphers are encrypted with that org's key, not the user key. */
+  OrganizationId: string | null;
   Login?: SyncCipherLogin;
   /** Custom fields. */
   Fields?: SyncCipherField[];
@@ -368,6 +385,8 @@ export interface CustomFieldEnc {
 export interface LoginCipherPayload {
   nameEnc: string;
   folderIdOrNull: string | null;
+  /** Set for an organization cipher so the server keeps it in that org. */
+  organizationIdOrNull?: string | null;
   /** Either field may be null/undefined.  Pre-existing values on update
    *  are NOT preserved by the caller-controlled write API - the caller
    *  must pass through anything they want kept. */
@@ -382,6 +401,7 @@ function buildLoginCipherBody(payload: LoginCipherPayload): unknown {
     Type: 1,
     Name: payload.nameEnc,
     FolderId: payload.folderIdOrNull,
+    OrganizationId: payload.organizationIdOrNull ?? null,
     Login: {
       Username: payload.usernameEnc ?? null,
       Password: payload.passwordEnc ?? null,
@@ -436,9 +456,26 @@ function normalizeSyncResponse(raw: unknown): SyncResponse {
     pick<unknown[]>(r, "Ciphers", "ciphers") ?? [];
   const foldersRaw =
     pick<unknown[]>(r, "Folders", "folders") ?? [];
+  const profileRaw = pick<unknown>(r, "Profile", "profile");
   return {
     Ciphers: ciphersRaw.map(normalizeCipher),
     Folders: foldersRaw.map(normalizeFolder),
+    Profile: profileRaw ? normalizeProfile(profileRaw) : null,
+  };
+}
+
+function normalizeProfile(raw: unknown): SyncProfile {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const orgsRaw = pick<unknown[]>(r, "Organizations", "organizations") ?? [];
+  return {
+    PrivateKey: pick<string | null>(r, "PrivateKey", "privateKey") ?? null,
+    Organizations: orgsRaw.map((o) => {
+      const oo = (o ?? {}) as Record<string, unknown>;
+      return {
+        Id: pick<string>(oo, "Id", "id") ?? "",
+        Key: pick<string>(oo, "Key", "key") ?? "",
+      };
+    }),
   };
 }
 
@@ -460,6 +497,8 @@ function normalizeCipher(raw: unknown): SyncCipher {
     Type: pick<number>(r, "Type", "type") ?? 0,
     FolderId:
       pick<string | null>(r, "FolderId", "folderId") ?? null,
+    OrganizationId:
+      pick<string | null>(r, "OrganizationId", "organizationId") ?? null,
     Login: loginRaw ? normalizeLogin(loginRaw) : undefined,
     Fields: fieldsRaw.map(normalizeField),
     Notes: pick<string | null>(r, "Notes", "notes") ?? null,
