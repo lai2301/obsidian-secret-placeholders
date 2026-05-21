@@ -110,9 +110,12 @@ export class RefEditorModal extends Modal {
       text: `Secret location (${this.provider.displayName})`,
     });
 
+    const optional = new Set(this.provider.optionalRefParts ?? []);
+
     for (const field of Object.keys(this.parts)) {
+      const label = field.charAt(0).toUpperCase() + field.slice(1);
       new Setting(this.contentEl)
-        .setName(field.charAt(0).toUpperCase() + field.slice(1))
+        .setName(optional.has(field) ? `${label} (optional)` : label)
         .addText((t) =>
           t
             .setValue(this.parts[field])
@@ -126,8 +129,9 @@ export class RefEditorModal extends Modal {
           .setButtonText("OK")
           .setCta()
           .onClick(() => {
-            for (const v of Object.values(this.parts)) {
-              if (!v) return;
+            // Required parts must be non-empty; optional ones may be blank.
+            for (const [key, v] of Object.entries(this.parts)) {
+              if (!v && !optional.has(key)) return;
             }
             const result = this.parts;
             this.close();

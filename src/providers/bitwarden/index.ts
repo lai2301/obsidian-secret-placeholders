@@ -115,6 +115,8 @@ export class BitwardenProvider implements Provider {
   readonly displayName = "Bitwarden / Vaultwarden";
   readonly placeholderPrefix = "vw:";
   readonly placeholderRegex = PLACEHOLDER_RE;
+  // Folder is optional - a root-level item is referenced as {{vw:item#field}}.
+  readonly optionalRefParts = ["folder"];
 
   private settings: BitwardenSettings = { ...DEFAULTS };
   private client: BitwardenClient | null = null;

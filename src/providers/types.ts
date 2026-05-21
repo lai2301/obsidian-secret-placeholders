@@ -72,6 +72,11 @@ export interface Provider {
   parseRef(raw: string): ProviderRef | null;
   formatRef(parts: Record<string, string>): string;
 
+  /** Ref parts (keys of `suggestRefDefaults`) that may be left blank in
+   *  the ref-editor modal.  Anything not listed is required.  Example:
+   *  Bitwarden's "folder". */
+  optionalRefParts?: string[];
+
   readKey(ref: ProviderRef): Promise<string>;
   writeKey(ref: ProviderRef, value: string): Promise<void>;
   /** Best-effort enumeration for autocomplete / browser modal. May return
