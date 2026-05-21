@@ -151,7 +151,9 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
     const { editor, start, end } = this.context;
     if (s.kind === "provider") {
       // Insert `{{<prefix>:` and let the user keep typing - the next
-      // keystroke re-triggers this suggester in mode 3.
+      // keystroke re-triggers this suggester in mode 3.  Any `}}` that
+      // Obsidian's auto-pair-brackets inserted after the cursor is left
+      // in place so the user types the rest inside it.
       const inserted = `{{${s.provider.placeholderPrefix}`;
       editor.replaceRange(inserted, start, end);
       // Move the cursor to the end of the inserted text so the suggester
@@ -161,7 +163,17 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
         ch: start.ch + inserted.length,
       });
     } else {
-      editor.replaceRange(s.ref.raw, start, end);
+      // s.ref.raw already ends with `}}`.  Obsidian's "Auto pair brackets"
+      // may have inserted a `}}` right after the cursor when the user
+      // typed `{{`; swallow up to two trailing `}` so the result isn't
+      // `...}}}}`.
+      const lineText = editor.getLine(end.line);
+      let trailing = 0;
+      while (trailing < 2 && lineText[end.ch + trailing] === "}") trailing++;
+      editor.replaceRange(s.ref.raw, start, {
+        line: end.line,
+        ch: end.ch + trailing,
+      });
     }
   }
 
