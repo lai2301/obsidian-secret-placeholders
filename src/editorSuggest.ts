@@ -44,6 +44,14 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
     super(app);
   }
 
+  /** Drop the cached per-provider ref lists so the next suggestion query
+   *  re-fetches.  Called after a secret is written/edited and from the
+   *  "Clear cache" command. */
+  clearCache(): void {
+    this.caches.clear();
+    this.inflight.clear();
+  }
+
   onTrigger(
     cursor: EditorPosition,
     editor: Editor,
@@ -151,7 +159,9 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
     const { editor, start, end } = this.context;
     if (s.kind === "provider") {
       // Insert `{{<prefix>:` and let the user keep typing - the next
-      // keystroke re-triggers this suggester in mode 3.
+      // keystroke re-triggers this suggester in mode 3.  Any `}}` that
+      // Obsidian's auto-pair-brackets inserted after the cursor is left
+      // in place so the user types the rest inside it.
       const inserted = `{{${s.provider.placeholderPrefix}`;
       editor.replaceRange(inserted, start, end);
       // Move the cursor to the end of the inserted text so the suggester
@@ -161,7 +171,17 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
         ch: start.ch + inserted.length,
       });
     } else {
-      editor.replaceRange(s.ref.raw, start, end);
+      // s.ref.raw already ends with `}}`.  Obsidian's "Auto pair brackets"
+      // may have inserted a `}}` right after the cursor when the user
+      // typed `{{`; swallow up to two trailing `}` so the result isn't
+      // `...}}}}`.
+      const lineText = editor.getLine(end.line);
+      let trailing = 0;
+      while (trailing < 2 && lineText[end.ch + trailing] === "}") trailing++;
+      editor.replaceRange(s.ref.raw, start, {
+        line: end.line,
+        ch: end.ch + trailing,
+      });
     }
   }
 
@@ -183,7 +203,12 @@ export class SecretEditorSuggest extends EditorSuggest<Suggestion> {
     const p = (async () => {
       try {
         const refs = await provider.list();
-        this.caches.set(provider.id, { fetchedAt: Date.now(), refs });
+        // Only cache a non-empty result.  An empty list usually means the
+        // provider is logged out or mid-error; caching that would hide
+        // real secrets for the full TTL once the user logs in.
+        if (refs.length > 0) {
+          this.caches.set(provider.id, { fetchedAt: Date.now(), refs });
+        }
         return refs;
       } catch {
         return [];

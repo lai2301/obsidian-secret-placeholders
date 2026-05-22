@@ -45,6 +45,8 @@ import {
   encryptString,
   masterPasswordHash,
   stretchMasterKey,
+  unlockOrgKey,
+  unlockPrivateKey,
   unlockUserKey,
 } from "./crypto";
 import {
@@ -92,6 +94,9 @@ interface DecryptedCipher {
   name: string;
   folderId: string | null;
   folderName: string | null;
+  /** Null for a personal cipher; the org id for an organization cipher.
+   *  Determines which key writeKey must encrypt with. */
+  orgId: string | null;
   password: string | null;
   username: string | null;
   fields: Map<string, string>;
@@ -115,11 +120,16 @@ export class BitwardenProvider implements Provider {
   readonly displayName = "Bitwarden / Vaultwarden";
   readonly placeholderPrefix = "vw:";
   readonly placeholderRegex = PLACEHOLDER_RE;
+  // Folder is optional - a root-level item is referenced as {{vw:item#field}}.
+  readonly optionalRefParts = ["folder"];
 
   private settings: BitwardenSettings = { ...DEFAULTS };
   private client: BitwardenClient | null = null;
   /** User encryption key, in memory only.  Cleared on logout. */
   private userKey: SymmetricKey | null = null;
+  /** Organization symmetric keys by org id, derived each sync.  Used to
+   *  decrypt and write organization-owned ciphers. */
+  private orgKeys = new Map<string, SymmetricKey>();
   /** Decrypted cipher cache.  Refreshed on demand. */
   private ciphers: DecryptedCipher[] | null = null;
   private cipherCacheExpires = 0;
@@ -147,6 +157,7 @@ export class BitwardenProvider implements Provider {
       logout: async () => {
         this.client?.clearTokens();
         this.userKey = null;
+        this.orgKeys.clear();
         this.ciphers = null;
         this.cipherCacheExpires = 0;
         this.settings.encryptedUserKey = null;
@@ -463,10 +474,22 @@ export class BitwardenProvider implements Provider {
 
     if (existing) {
       // Patch: start from the existing EncStrings so sibling fields don't
-      // get blown away.  Overwrite just the target slot.
+      // get blown away.  Overwrite just the target slot.  An org cipher
+      // must be re-encrypted with its org key, not the user key.
+      const cipherKey = existing.orgId
+        ? this.orgKeys.get(existing.orgId)
+        : this.userKey;
+      if (!cipherKey) {
+        throw new BitwardenApiError(
+          403,
+          `cannot write '${ref.parts.item}': organization key unavailable`,
+          `cannot write '${ref.parts.item}': organization key unavailable`,
+        );
+      }
       const payload: LoginCipherPayload = {
         nameEnc: existing.raw.nameEnc,
         folderIdOrNull: folderId ?? existing.folderId,
+        organizationIdOrNull: existing.orgId,
         usernameEnc: existing.raw.usernameEnc,
         passwordEnc: existing.raw.passwordEnc,
         notesEnc: existing.raw.notesEnc,
@@ -476,20 +499,35 @@ export class BitwardenProvider implements Provider {
           type: f.type,
         })),
       };
-      await this.applyFieldWrite(payload, field, fieldLabel, value, existing);
+      await this.applyFieldWrite(
+        payload,
+        cipherKey,
+        field,
+        fieldLabel,
+        value,
+        existing,
+      );
       await this.client.updateLoginCipher(existing.id, payload);
     } else {
-      // Brand-new cipher.
+      // Brand-new cipher - always created in the personal vault.
       const nameEnc = await encryptString(this.userKey, ref.parts.item);
       const payload: LoginCipherPayload = {
         nameEnc,
         folderIdOrNull: folderId,
+        organizationIdOrNull: null,
         usernameEnc: null,
         passwordEnc: null,
         notesEnc: null,
         fields: [],
       };
-      await this.applyFieldWrite(payload, field, fieldLabel, value, null);
+      await this.applyFieldWrite(
+        payload,
+        this.userKey,
+        field,
+        fieldLabel,
+        value,
+        null,
+      );
       await this.client.createLoginCipher(payload);
     }
     this.ciphers = null;
@@ -498,13 +536,13 @@ export class BitwardenProvider implements Provider {
 
   private async applyFieldWrite(
     payload: LoginCipherPayload,
+    key: SymmetricKey,
     fieldKey: string,
     fieldLabel: string,
     value: string,
     existing: DecryptedCipher | null,
   ): Promise<void> {
-    if (!this.userKey) throw new BitwardenApiError(401, "no user key");
-    const enc = (s: string) => encryptString(this.userKey!, s);
+    const enc = (s: string) => encryptString(key, s);
     switch (fieldKey) {
       case "password":
         payload.passwordEnc = await enc(value);
@@ -552,7 +590,7 @@ export class BitwardenProvider implements Provider {
     } catch {
       return [];
     }
-    return ciphers.slice(0, 200).map((c) => ({
+    return ciphers.map((c) => ({
       provider: this.id,
       raw: this.formatRef({
         folder: c.folderName ?? "",
@@ -673,6 +711,31 @@ export class BitwardenProvider implements Provider {
     }
     const res = await this.client.sync();
 
+    // Derive organization keys: decrypt the user's RSA private key with the
+    // user key, then RSA-decrypt each org's symmetric key.  Org ciphers are
+    // encrypted with these, not the user key.  Any failure here just means
+    // org ciphers stay invisible - personal ciphers are unaffected.
+    this.orgKeys = new Map<string, SymmetricKey>();
+    const orgs = res.Profile?.Organizations ?? [];
+    if (res.Profile?.PrivateKey && orgs.length > 0) {
+      try {
+        const rsaKey = await unlockPrivateKey(
+          this.userKey,
+          res.Profile.PrivateKey,
+        );
+        for (const org of orgs) {
+          if (!org.Id || !org.Key) continue;
+          try {
+            this.orgKeys.set(org.Id, await unlockOrgKey(rsaKey, org.Key));
+          } catch {
+            /* skip an org whose key we can't unwrap */
+          }
+        }
+      } catch {
+        /* no private key / import failed - personal ciphers only */
+      }
+    }
+
     const folderById = new Map<string, string>();
     for (const f of res.Folders ?? []) {
       const name = await safeDecrypt(this.userKey, f.Name);
@@ -684,13 +747,19 @@ export class BitwardenProvider implements Provider {
       // Only login-type ciphers carry .Login (password + username). Custom
       // fields exist on every cipher type, so we still surface them.
       if (c.Type !== 1 && c.Type !== 2) continue;
-      const name = await safeDecrypt(this.userKey, c.Name);
+      // Pick the key: org ciphers use their org key, personal use userKey.
+      // An org cipher whose key we couldn't unwrap is skipped.
+      const key = c.OrganizationId
+        ? this.orgKeys.get(c.OrganizationId)
+        : this.userKey;
+      if (!key) continue;
+      const name = await safeDecrypt(key, c.Name);
       if (name === null) continue;
       const password = c.Login?.Password
-        ? await safeDecrypt(this.userKey, c.Login.Password)
+        ? await safeDecrypt(key, c.Login.Password)
         : null;
       const username = c.Login?.Username
-        ? await safeDecrypt(this.userKey, c.Login.Username)
+        ? await safeDecrypt(key, c.Login.Username)
         : null;
       const fields = new Map<string, string>();
       const rawFields = new Map<
@@ -699,11 +768,9 @@ export class BitwardenProvider implements Provider {
       >();
       for (const f of c.Fields ?? []) {
         if (!f.Name) continue;
-        const fname = await safeDecrypt(this.userKey, f.Name);
+        const fname = await safeDecrypt(key, f.Name);
         if (fname === null) continue;
-        const fval = f.Value
-          ? await safeDecrypt(this.userKey, f.Value)
-          : "";
+        const fval = f.Value ? await safeDecrypt(key, f.Value) : "";
         fields.set(fname.toLowerCase(), fval ?? "");
         rawFields.set(fname.toLowerCase(), {
           nameEnc: f.Name,
@@ -716,6 +783,7 @@ export class BitwardenProvider implements Provider {
         name,
         folderId: c.FolderId,
         folderName: c.FolderId ? folderById.get(c.FolderId) ?? null : null,
+        orgId: c.OrganizationId,
         password,
         username,
         fields,

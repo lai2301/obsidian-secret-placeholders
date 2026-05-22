@@ -112,10 +112,9 @@ class EditSecretModal extends Modal {
       await this.provider.writeKey(this.ref, this.newValue);
       new Notice(`Updated ${this.ref.raw.slice(2, -2)}`);
       this.close();
-      // Tell every rendered span to re-fetch so the new value shows
-      // immediately, and invalidate the autocomplete cache.
-      this.provider.clearCache();
-      this.plugin.fireStateChange("auth");
+      // Drop provider + autocomplete caches and re-render every rendered
+      // span so the new value shows immediately.
+      this.plugin.refreshSecretData();
     } catch (e) {
       this.busy = false;
       new Notice(`Write failed: ${(e as Error).message}`);

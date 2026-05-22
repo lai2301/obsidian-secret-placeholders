@@ -32,6 +32,7 @@ export default class SecretPlaceholdersPlugin extends Plugin {
   data!: PluginData;
   registry!: ProviderRegistry;
   private statusBar: StatusBar | null = null;
+  private editorSuggest: SecretEditorSuggest | null = null;
   private authChangeListeners = new Set<(providerId: string) => void>();
 
   async onload(): Promise<void> {
@@ -44,7 +45,8 @@ export default class SecretPlaceholdersPlugin extends Plugin {
 
     this.registerMarkdownPostProcessor(buildPostProcessor(this));
     this.registerEditorExtension(buildLivePreviewExtension(this));
-    this.registerEditorSuggest(new SecretEditorSuggest(this.app, this));
+    this.editorSuggest = new SecretEditorSuggest(this.app, this);
+    this.registerEditorSuggest(this.editorSuggest);
 
     registerCommands(this);
     registerEditorContextMenu(this);
@@ -117,6 +119,17 @@ export default class SecretPlaceholdersPlugin extends Plugin {
     this.statusBar = new StatusBar(this);
   }
 
+  /** Drop every cached view of secret data - each provider's resolved-
+   *  secret cache AND the editor-suggest's separate ref-list cache - then
+   *  tell rendered placeholders to re-fetch.  Call this after writing or
+   *  editing a secret, and from the "Clear cache" command, so newly added
+   *  or changed secrets show up everywhere without waiting for a TTL. */
+  refreshSecretData(): void {
+    this.registry.clearAllCaches();
+    this.editorSuggest?.clearCache();
+    this.fireStateChange("auth");
+  }
+
   onunload(): void {
     this.registry.clearAllCaches();
     this.statusBar?.destroy();
@@ -168,6 +181,10 @@ export default class SecretPlaceholdersPlugin extends Plugin {
         /* swallow */
       }
     }
+    // A login/logout changes what each provider can enumerate, so drop the
+    // editor-suggest's ref-list cache - otherwise a stale (often empty)
+    // list lingers for the cache TTL after the user logs in.
+    this.editorSuggest?.clearCache();
     // Tell every rendered placeholder to re-fetch if it was in an error
     // state - the user probably just logged in.
     this.fireStateChange("auth");
