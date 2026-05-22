@@ -12,6 +12,7 @@ inside Obsidian.
 
 - [The problem](#the-problem)
 - [How it works](#how-it-works)
+- [Demos](#demos)
 - [Supported backends](#supported-backends)
 - [Installation](#installation)
 - [Quick start](#quick-start)
@@ -83,6 +84,27 @@ Rendering is strictly display-only. The Reading-mode post-processor and
 the Live Preview decoration never write to the vault. The only actions
 that modify a note are ones you explicitly trigger (insert placeholder,
 save selection, replace inline).
+
+---
+
+## Demos
+
+**Autocomplete** — type `{{`, pick a provider, then fuzzy-search your
+secrets. Selecting one inserts the full placeholder.
+
+![Autocomplete demo](assets/SecretPlaceholderDemo-Suggestion.gif)
+
+**Save a selection as a new secret** — select a credential in a note and
+save it straight to your password manager. The value leaves the note;
+only the placeholder stays behind.
+
+![Save new secret demo](assets/SecretPlaceholderDemo-NewSecret.gif)
+
+**Edit a secret's value** — change the stored value from inside Obsidian.
+The backend secret updates; the placeholder text in the note is
+untouched.
+
+![Edit secret demo](assets/SecretPlaceholderDemo-EditSecret.gif)
 
 ---
 
