@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.6.0
+
+First community-store release.
+
+### Added
+- **Bitwarden organization support.** Items owned by a Bitwarden
+  organization were previously dropped because they're encrypted with the
+  organization's key, not the user key. The plugin now decrypts the user's
+  RSA private key, RSA-decrypts each organization's key from the sync
+  response, and decrypts org ciphers with it - for reading, listing,
+  autocomplete, and writing back. New items are still created in the
+  personal vault.
+- **README demo GIFs** for autocomplete, save-selection-as-secret, and
+  edit-secret-value.
+
+### Changed
+- Removed the 200-item cap in the Bitwarden secret list - large vaults had
+  items silently hidden from autocomplete and the secret browser.
+- The ref-editor modal lets a provider mark parts optional. Bitwarden's
+  folder is now optional, so `{{vw:item#field}}` (no folder) can be saved.
+
+### Fixed
+- Autocomplete no longer produces `{{...}}}}` when Obsidian's "Auto pair
+  brackets" is enabled.
+- New or edited secrets appear in autocomplete immediately instead of
+  after a cache TTL; `Secrets: Clear cache` now also clears the
+  autocomplete cache.
+- Autocomplete is no longer stuck empty after logging in - empty results
+  are not cached, and an auth change clears the autocomplete cache.
+
 ## 0.5.5
 
 ### Added
