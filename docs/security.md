@@ -1,6 +1,7 @@
 # Security, network use & troubleshooting
 
 - [Security model](#security-model)
+- [Permissions & data access](#permissions--data-access)
 - [Network use](#network-use)
 - [Known limitations](#known-limitations)
 - [Troubleshooting](#troubleshooting)
@@ -29,6 +30,40 @@
 If you publish notes from your vault, also strip placeholders in your
 publish pipeline as defense-in-depth — a leaked placeholder reveals a
 secret *path*, not its value, but paths can still be sensitive.
+
+## Permissions & data access
+
+What the plugin touches, and why. This mirrors the disclosures the
+Obsidian community-plugin review surfaces.
+
+- **Network requests** — only to the provider URLs you configure
+  (OpenBao, 1Password Connect, Bitwarden/Vaultwarden). No
+  author-controlled endpoints, telemetry, or analytics. All requests
+  go through Obsidian's `requestUrl`. See [Network use](#network-use).
+- **Vault file enumeration** — the Secrets sidebar lists markdown files
+  via `vault.getMarkdownFiles()` to scan them for `{{provider:ref}}`
+  placeholders so you can see where each secret is referenced. File
+  *contents* are scanned for the placeholder regex only; they are not
+  sent anywhere.
+- **Clipboard write** — *Copy secret to clipboard* commands (command
+  palette, right-click on a rendered secret, sidebar) call
+  `navigator.clipboard.writeText`. Triggered only by an explicit user
+  action.
+- **Base64 (`atob` / `btoa`)** — used to encode/decode the binary inputs
+  and outputs of WebCrypto (AES-GCM ciphertext, salts, IVs) and
+  Bitwarden's EncString format. Not used to obfuscate code or strings.
+- **WebAssembly** — `hash-wasm` provides PBKDF2 and Argon2id for
+  Bitwarden key derivation and for the optional "remember on device"
+  passphrase encryption. The WASM blobs are the published `hash-wasm`
+  package, bundled at build time; no WASM is fetched at runtime.
+- **No file writes from render paths.** The Reading-view post-processor
+  and Live Preview decoration never modify a note. Only explicit user
+  commands write to a file, and *Replace with resolved value* is
+  confirmation-gated.
+
+Release artifacts (`main.js`, `manifest.json`, `styles.css`) are
+published with a [GitHub artifact attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
+linking each asset to the workflow run and commit that built it.
 
 ## Network use
 

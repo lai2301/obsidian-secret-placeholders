@@ -19,6 +19,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -52,6 +54,15 @@ jobs:
         run: |
           npm ci
           npm run build
+
+      - name: Attest build provenance for release artifacts
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
       - name: Extract changelog section for this version
         if: steps.check.outputs.exists == 'false'
