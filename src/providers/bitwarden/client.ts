@@ -94,6 +94,11 @@ export interface SyncCipher {
   /** EncString of the item title. */
   Name: string;
   Type: number; // 1=login, 2=secure note, 3=card, 4=identity
+  /** Optional per-cipher key (EncString of a 64-byte key, wrapped with the
+   *  user or org key).  When present, this cipher's own fields are encrypted
+   *  with THIS key, not directly with the user/org key.  Newer Bitwarden
+   *  clients assign one per item. */
+  Key?: string | null;
   /** Null if at vault root. */
   FolderId: string | null;
   /** Null for a personal cipher; an org id for an organization cipher.
@@ -384,6 +389,10 @@ export interface CustomFieldEnc {
 
 export interface LoginCipherPayload {
   nameEnc: string;
+  /** The cipher's per-cipher key EncString, echoed back unchanged on update
+   *  so the server keeps it (and so the fields, which are encrypted with it,
+   *  stay readable).  Null/undefined for ciphers without a per-cipher key. */
+  keyEnc?: string | null;
   folderIdOrNull: string | null;
   /** Set for an organization cipher so the server keeps it in that org. */
   organizationIdOrNull?: string | null;
@@ -400,6 +409,7 @@ function buildLoginCipherBody(payload: LoginCipherPayload): unknown {
   return {
     Type: 1,
     Name: payload.nameEnc,
+    Key: payload.keyEnc ?? null,
     FolderId: payload.folderIdOrNull,
     OrganizationId: payload.organizationIdOrNull ?? null,
     Login: {
@@ -495,6 +505,7 @@ function normalizeCipher(raw: unknown): SyncCipher {
     Id: pick<string>(r, "Id", "id") ?? "",
     Name: pick<string>(r, "Name", "name") ?? "",
     Type: pick<number>(r, "Type", "type") ?? 0,
+    Key: pick<string | null>(r, "Key", "key") ?? null,
     FolderId:
       pick<string | null>(r, "FolderId", "folderId") ?? null,
     OrganizationId:
