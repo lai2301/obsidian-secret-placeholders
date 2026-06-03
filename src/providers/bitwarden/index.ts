@@ -40,6 +40,7 @@ import {
 import {
   BitwardenCryptoError,
   SymmetricKey,
+  decryptBytes,
   decryptString,
   deriveMasterKey,
   encryptString,
@@ -97,6 +98,14 @@ interface DecryptedCipher {
   /** Null for a personal cipher; the org id for an organization cipher.
    *  Determines which key writeKey must encrypt with. */
   orgId: string | null;
+  /** The key this cipher's fields are actually encrypted with: its own
+   *  per-cipher key when it has one, otherwise the user/org key.  writeKey
+   *  must re-encrypt with THIS key, not the user/org key, or the item is
+   *  corrupted. */
+  itemKey: SymmetricKey;
+  /** The raw per-cipher-key EncString (cipher.Key), or null if the cipher
+   *  has none.  Must be echoed back on update so the server keeps it. */
+  cipherKeyEnc: string | null;
   password: string | null;
   username: string | null;
   fields: Map<string, string>;
@@ -474,20 +483,14 @@ export class BitwardenProvider implements Provider {
 
     if (existing) {
       // Patch: start from the existing EncStrings so sibling fields don't
-      // get blown away.  Overwrite just the target slot.  An org cipher
-      // must be re-encrypted with its org key, not the user key.
-      const cipherKey = existing.orgId
-        ? this.orgKeys.get(existing.orgId)
-        : this.userKey;
-      if (!cipherKey) {
-        throw new BitwardenApiError(
-          403,
-          `cannot write '${ref.parts.item}': organization key unavailable`,
-          `cannot write '${ref.parts.item}': organization key unavailable`,
-        );
-      }
+      // get blown away.  Overwrite just the target slot.  Re-encrypt with
+      // the SAME key the item already uses - its per-cipher key if it has
+      // one, otherwise the org key (org cipher) or the user key (personal).
+      // Using the wrong key here corrupts the item.
+      const cipherKey = existing.itemKey;
       const payload: LoginCipherPayload = {
         nameEnc: existing.raw.nameEnc,
+        keyEnc: existing.cipherKeyEnc,
         folderIdOrNull: folderId ?? existing.folderId,
         organizationIdOrNull: existing.orgId,
         usernameEnc: existing.raw.usernameEnc,
@@ -753,13 +756,30 @@ export class BitwardenProvider implements Provider {
         ? this.orgKeys.get(c.OrganizationId)
         : this.userKey;
       if (!key) continue;
-      const name = await safeDecrypt(key, c.Name);
+      // Newer ciphers carry their own key (cipher.Key): a 64-byte symmetric
+      // key, EncString-wrapped with the user/org key.  When present, the
+      // cipher's fields are encrypted with THIS key, not the user/org key
+      // directly.  Unwrap it and use it for every field below; fall back to
+      // the base key for older ciphers that have no per-cipher key.
+      let itemKey: SymmetricKey = key;
+      if (c.Key) {
+        try {
+          const raw = await decryptBytes(key, c.Key);
+          if (raw.length !== 64) continue;
+          itemKey = { encKey: raw.slice(0, 32), macKey: raw.slice(32, 64) };
+        } catch {
+          // Can't unwrap this cipher's key - leave it out rather than
+          // surfacing an undecryptable item.
+          continue;
+        }
+      }
+      const name = await safeDecrypt(itemKey, c.Name);
       if (name === null) continue;
       const password = c.Login?.Password
-        ? await safeDecrypt(key, c.Login.Password)
+        ? await safeDecrypt(itemKey, c.Login.Password)
         : null;
       const username = c.Login?.Username
-        ? await safeDecrypt(key, c.Login.Username)
+        ? await safeDecrypt(itemKey, c.Login.Username)
         : null;
       const fields = new Map<string, string>();
       const rawFields = new Map<
@@ -768,9 +788,9 @@ export class BitwardenProvider implements Provider {
       >();
       for (const f of c.Fields ?? []) {
         if (!f.Name) continue;
-        const fname = await safeDecrypt(key, f.Name);
+        const fname = await safeDecrypt(itemKey, f.Name);
         if (fname === null) continue;
-        const fval = f.Value ? await safeDecrypt(key, f.Value) : "";
+        const fval = f.Value ? await safeDecrypt(itemKey, f.Value) : "";
         fields.set(fname.toLowerCase(), fval ?? "");
         rawFields.set(fname.toLowerCase(), {
           nameEnc: f.Name,
@@ -784,6 +804,8 @@ export class BitwardenProvider implements Provider {
         folderId: c.FolderId,
         folderName: c.FolderId ? folderById.get(c.FolderId) ?? null : null,
         orgId: c.OrganizationId,
+        itemKey,
+        cipherKeyEnc: c.Key ?? null,
         password,
         username,
         fields,
