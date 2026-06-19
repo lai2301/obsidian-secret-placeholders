@@ -4,6 +4,7 @@
 
 import { ItemView, MarkdownView, Notice, TFile, WorkspaceLeaf, debounce, setIcon } from "obsidian";
 
+import { t } from "./i18n";
 import type SecretPlaceholdersPlugin from "./main";
 import { openEditSecretModal } from "./modals/editSecret";
 
@@ -50,7 +51,7 @@ export class SecretIndexView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Secret placeholders";
+    return t("sidebar.displayName");
   }
 
   getIcon(): string {
@@ -137,7 +138,7 @@ export class SecretIndexView extends ItemView {
 
     const header = root.createDiv({ cls: "sp-sidebar__header" });
     const title = header.createDiv({ cls: "sp-sidebar__title" });
-    title.setText("Placeholder index");
+    title.setText(t("sidebar.title"));
     const totalRefs = [...this.index.values()].reduce(
       (a, g) => a + g.refs.size,
       0,
@@ -150,17 +151,17 @@ export class SecretIndexView extends ItemView {
     );
     title.createSpan({
       cls: "sp-sidebar__count",
-      text: `  ${totalRefs} unique · ${totalUses} uses`,
+      text: t("sidebar.count", { refs: totalRefs, uses: totalUses }),
     });
     const refreshBtn = header.createEl("button", { cls: "sp-sidebar__refresh" });
     setIcon(refreshBtn, "refresh-ccw");
-    refreshBtn.setAttr("aria-label", "Re-scan vault");
+    refreshBtn.setAttr("aria-label", t("sidebar.rescan"));
     refreshBtn.addEventListener("click", () => void this.rebuild());
 
     const filter = root.createEl("input", {
       type: "text",
       cls: "sp-sidebar__filter",
-      placeholder: "Filter…",
+      placeholder: t("sidebar.filter"),
     });
     filter.value = this.filterText;
     filter.addEventListener("input", () => {
@@ -177,7 +178,7 @@ export class SecretIndexView extends ItemView {
     if (this.index.size === 0) {
       container.createDiv({
         cls: "sp-sidebar__empty",
-        text: "No placeholders found in this vault.",
+        text: t("sidebar.empty"),
       });
       return;
     }
@@ -191,7 +192,11 @@ export class SecretIndexView extends ItemView {
       const providerEl = container.createDiv({ cls: "sp-sidebar__group" });
       providerEl.createDiv({
         cls: "sp-sidebar__group-header",
-        text: `${group.displayName}  (${matchingRefs.length} unique · ${totalUses} uses)`,
+        text: t("sidebar.groupHeader", {
+          provider: group.displayName,
+          refs: matchingRefs.length,
+          uses: totalUses,
+        }),
       });
       for (const ref of matchingRefs.sort((a, b) =>
         a.raw.localeCompare(b.raw),
@@ -205,19 +210,19 @@ export class SecretIndexView extends ItemView {
         const actions = titleRow.createDiv({ cls: "sp-sidebar__ref-actions" });
         const editBtn = actions.createEl("button", {
           cls: "sp-sidebar__action",
-          attr: { "aria-label": "Edit secret value" },
+          attr: { "aria-label": t("sidebar.editSecret") },
         });
         setIcon(editBtn, "pencil");
         editBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           const provider = this.plugin.registry.get(ref.providerId);
           if (!provider) {
-            new Notice(`Provider '${ref.providerId}' isn't enabled`);
+            new Notice(t("sidebar.providerNotEnabled", { provider: ref.providerId }));
             return;
           }
           const parsed = this.plugin.registry.parseRef(ref.raw);
           if (!parsed) {
-            new Notice("Couldn't parse placeholder");
+            new Notice(t("sidebar.parseError"));
             return;
           }
           openEditSecretModal(this.plugin, parsed.provider, parsed.ref);
@@ -258,7 +263,7 @@ export async function activateSecretIndexView(
   if (!leaf) {
     leaf = workspace.getRightLeaf(false);
     if (!leaf) {
-      new Notice("Could not open Secret Placeholders sidebar");
+      new Notice(t("sidebar.openFailed"));
       return;
     }
     await leaf.setViewState({ type: VIEW_TYPE_INDEX, active: true });

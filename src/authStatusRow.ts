@@ -6,6 +6,7 @@
 // this row reflects logouts/logins without manual refresh.
 
 import { Notice, setIcon } from "obsidian";
+import { t } from "./i18n";
 import type { Provider, ProviderAuthStatus } from "./providers/types";
 
 export interface AuthStatusRowOptions {
@@ -30,7 +31,7 @@ export function renderAuthStatusRow(
   const pill = left.createSpan({ cls: "sp-auth-row__pill sp-auth-row__pill--loading" });
   const pillIcon = pill.createSpan({ cls: "sp-auth-row__pill-icon" });
   setIcon(pillIcon, "loader-2");
-  pill.createSpan({ cls: "sp-auth-row__pill-text", text: "Checking…" });
+  pill.createSpan({ cls: "sp-auth-row__pill-text", text: t("auth.checking") });
 
   const detail = left.createDiv({ cls: "sp-auth-row__detail" });
 
@@ -42,12 +43,12 @@ export function renderAuthStatusRow(
     pill.addClass("sp-auth-row__pill--in");
     pillIcon.empty();
     setIcon(pillIcon, "circle-check");
-    pill.children[1]?.setText("Logged in");
+    pill.children[1]?.setText(t("auth.loggedIn"));
     detail.empty();
     const parts: string[] = [];
     if (status.identity) parts.push(status.identity);
     if (status.ttlSec !== undefined && status.ttlSec >= 0) {
-      parts.push(`TTL ${formatTtl(status.ttlSec)}`);
+      parts.push(t("auth.ttl", { ttl: formatTtl(status.ttlSec) }));
     }
     detail.setText(parts.join(" · "));
   };
@@ -58,7 +59,7 @@ export function renderAuthStatusRow(
     pill.addClass("sp-auth-row__pill--out");
     pillIcon.empty();
     setIcon(pillIcon, "circle-x");
-    pill.children[1]?.setText("Not logged in");
+    pill.children[1]?.setText(t("auth.notLoggedIn"));
     detail.empty();
   };
 
@@ -66,14 +67,14 @@ export function renderAuthStatusRow(
     right.empty();
     const cls = "mod-cta";
     if (loggedIn) {
-      const btn = right.createEl("button", { text: "Log out" });
+      const btn = right.createEl("button", { text: t("button.logOut") });
       btn.addClass("mod-warning");
       btn.addEventListener("click", async () => {
         await provider.auth.logout();
-        new Notice(`${provider.displayName}: logged out`);
+        new Notice(t("notice.loggedOut", { provider: provider.displayName }));
       });
     } else {
-      const btn = right.createEl("button", { text: "Log in" });
+      const btn = right.createEl("button", { text: t("button.logIn") });
       btn.addClass(cls);
       btn.addEventListener("click", async () => {
         await provider.auth.login();

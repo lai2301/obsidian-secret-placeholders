@@ -15,6 +15,7 @@
 
 import { Notice, Setting, requestUrl } from "obsidian";
 
+import { t } from "../i18n";
 import { renderAuthStatusRow } from "../authStatusRow";
 import {
   NoteContext,
@@ -332,10 +333,10 @@ export class OnePasswordProvider implements Provider {
             await this.persist();
             try {
               await this.client.listVaults();
-              new Notice("1Password Connect: logged in");
+              new Notice(t("provider.onepassword.loggedIn"));
             } catch (e) {
               new Notice(
-                `1Password Connect: token rejected (${(e as Error).message})`,
+                t("provider.onepassword.tokenRejected", { msg: (e as Error).message }),
               );
             }
             this.ctx.notifyAuthChanged(this.id);
@@ -460,15 +461,15 @@ export class OnePasswordProvider implements Provider {
   }
 
   renderSettings(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName("1Password Connect").setHeading();
+    new Setting(containerEl).setName(t("provider.onepassword.heading")).setHeading();
 
     renderAuthStatusRow(containerEl, this);
 
     new Setting(containerEl)
-      .setName("Connect server URL")
-      .setDesc("Base URL of your self-hosted 1Password Connect server.")
-      .addText((t) =>
-        t
+      .setName(t("provider.onepassword.serverUrl.name"))
+      .setDesc(t("provider.onepassword.serverUrl.desc"))
+      .addText((txt) =>
+        txt
           .setPlaceholder("https://1pconnect.example.com")
           .setValue(this.settings.baseUrl)
           .onChange(async (v) => {
@@ -478,22 +479,20 @@ export class OnePasswordProvider implements Provider {
       );
 
     new Setting(containerEl)
-      .setName("Default vault")
-      .setDesc(
-        "Vault name or id used as the default for new placeholders. Leave empty to scan all vaults.",
-      )
-      .addText((t) =>
-        t.setValue(this.settings.defaultVault).onChange(async (v) => {
+      .setName(t("provider.onepassword.defaultVault.name"))
+      .setDesc(t("provider.onepassword.defaultVault.desc"))
+      .addText((txt) =>
+        txt.setValue(this.settings.defaultVault).onChange(async (v) => {
           this.settings.defaultVault = v.trim();
           await this.persist();
         }),
       );
 
     new Setting(containerEl)
-      .setName("Cache TTL (seconds)")
-      .setDesc("How long resolved 1Password items are kept in memory.")
-      .addText((t) =>
-        t.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
+      .setName(t("provider.onepassword.cacheTtl.name"))
+      .setDesc(t("provider.onepassword.cacheTtl.desc"))
+      .addText((txt) =>
+        txt.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
           const n = Number(v);
           if (!Number.isFinite(n) || n < 0) return;
           this.settings.cacheTtlSec = n;

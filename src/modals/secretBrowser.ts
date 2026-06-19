@@ -3,6 +3,7 @@
 // have to remember exact paths.
 
 import { App, FuzzySuggestModal } from "obsidian";
+import { t } from "../i18n";
 import type SecretPlaceholdersPlugin from "../main";
 import type { Provider, ProviderRef } from "../providers/types";
 
@@ -20,7 +21,7 @@ export class SecretBrowserModal extends FuzzySuggestModal<Entry> {
     private onChoose: (entry: Entry) => void,
   ) {
     super(app);
-    this.setPlaceholder("Search secrets…");
+    this.setPlaceholder(t("modal.secretBrowser.searchPlaceholder"));
   }
 
   onOpen(): void {
