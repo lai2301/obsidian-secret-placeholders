@@ -3,6 +3,8 @@
 
 import { requestUrl, RequestUrlParam } from "obsidian";
 
+import { t } from "../../i18n";
+
 export interface KvV2Read {
   data: Record<string, string>;
   metadata: { version: number; created_time: string };
@@ -44,7 +46,7 @@ export class OpenBaoClient {
   ): Promise<T> {
     const token = this.getToken();
     if (!token) {
-      throw new BaoError(401, "no token", "Not logged in to OpenBao");
+      throw new BaoError(401, "no token", t("provider.openbao.notLoggedIn"));
     }
     const url = `${this.getBaseUrl()}/v1/${path.replace(/^\/+/, "")}`;
     const params: RequestUrlParam = {

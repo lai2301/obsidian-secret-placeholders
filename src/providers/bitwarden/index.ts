@@ -352,7 +352,7 @@ export class BitwardenProvider implements Provider {
     masterPassword: string,
   ): Promise<void> {
     if (!this.client) {
-      throw new Error("Bitwarden server URL is not set");
+      throw new Error(t("provider.bitwarden.serverUrlNotSet"));
     }
     this.settings.email = email;
     await this.persist();
@@ -389,7 +389,7 @@ export class BitwardenProvider implements Provider {
       } catch (e) {
         if (BitwardenClient.isDeviceVerificationError(e) && !newDeviceOtp) {
           const otp = await this.promptDeviceOtp(email);
-          if (!otp) throw new Error("Device verification cancelled");
+          if (!otp) throw new Error(t("provider.bitwarden.deviceVerifCancelled"));
           newDeviceOtp = otp;
           continue;
         }
@@ -397,19 +397,20 @@ export class BitwardenProvider implements Provider {
         if (twoFa && !twoFactor) {
           if (!twoFa.providers.includes(0)) {
             throw new Error(
-              `Two-factor required but TOTP is not enabled on this account (providers: ${twoFa.providers.join(", ")}). ` +
-                `Enable TOTP in the Bitwarden web vault, or wait for plugin support for other methods.`,
+              t("provider.bitwarden.totpNotEnabled", {
+                providers: twoFa.providers.join(", "),
+              }),
             );
           }
           const code = await this.promptTwoFactorOtp();
-          if (!code) throw new Error("Two-factor verification cancelled");
+          if (!code) throw new Error(t("provider.bitwarden.twoFactorCancelled"));
           twoFactor = { token: code, provider: "0" };
           continue;
         }
         throw e;
       }
     }
-    if (!loginRes) throw new Error("login retries exhausted");
+    if (!loginRes) throw new Error(t("provider.bitwarden.loginRetriesExhausted"));
     this.client.setTokens(
       loginRes.access_token,
       loginRes.expires_in,

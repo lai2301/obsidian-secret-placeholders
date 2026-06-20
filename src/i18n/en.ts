@@ -216,6 +216,24 @@ export const en = {
   "provider.onepassword.cacheTtl.name": "Cache TTL (seconds)",
   "provider.onepassword.cacheTtl.desc":
     "How long resolved 1Password items are kept in memory.",
+
+  // Provider — user-facing error messages (surfaced via notices)
+  "provider.onepassword.notLoggedIn": "Not logged in to 1Password",
+  "provider.onepassword.urlNotConfigured":
+    "1Password Connect URL not configured",
+  "provider.openbao.notLoggedIn": "Not logged in to OpenBao",
+  "provider.openbao.oidc.noAuthUrl": "OpenBao did not return an auth_url",
+  "provider.openbao.oidc.noClientToken":
+    "callback response did not include client_token",
+  "provider.openbao.oidc.missingParams":
+    "callback missing state/code query params",
+  "provider.openbao.oidc.timeout": "OIDC callback timed out after {sec}s",
+  "provider.bitwarden.serverUrlNotSet": "Bitwarden server URL is not set",
+  "provider.bitwarden.deviceVerifCancelled": "Device verification cancelled",
+  "provider.bitwarden.twoFactorCancelled": "Two-factor verification cancelled",
+  "provider.bitwarden.loginRetriesExhausted": "login retries exhausted",
+  "provider.bitwarden.totpNotEnabled":
+    "Two-factor required but TOTP is not enabled on this account (providers: {providers}). Enable TOTP in the Bitwarden web vault, or wait for plugin support for other methods.",
 };
 
 export type Messages = typeof en;

@@ -119,14 +119,18 @@ class OnePasswordClient {
   ): Promise<T> {
     const token = this.getToken();
     if (!token) {
-      throw new OnePasswordError(401, "no token", "Not logged in to 1Password");
+      throw new OnePasswordError(
+        401,
+        "no token",
+        t("provider.onepassword.notLoggedIn"),
+      );
     }
     const base = this.getBaseUrl().replace(/\/+$/, "");
     if (!base) {
       throw new OnePasswordError(
         0,
         "no baseUrl",
-        "1Password Connect URL not configured",
+        t("provider.onepassword.urlNotConfigured"),
       );
     }
     const res = await requestUrl({

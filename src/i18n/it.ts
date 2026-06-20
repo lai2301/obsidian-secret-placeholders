@@ -214,4 +214,25 @@ export const it: Messages = {
   "provider.onepassword.cacheTtl.name": "Cache TTL (secondi)",
   "provider.onepassword.cacheTtl.desc":
     "Per quanto tempo gli item 1Password risolti restano in memoria.",
+
+  // Provider — messaggi d'errore mostrati all'utente (via notifiche)
+  "provider.onepassword.notLoggedIn": "Accesso a 1Password non effettuato",
+  "provider.onepassword.urlNotConfigured":
+    "URL di 1Password Connect non configurato",
+  "provider.openbao.notLoggedIn": "Accesso a OpenBao non effettuato",
+  "provider.openbao.oidc.noAuthUrl": "OpenBao non ha restituito un auth_url",
+  "provider.openbao.oidc.noClientToken":
+    "la risposta del callback non includeva client_token",
+  "provider.openbao.oidc.missingParams":
+    "parametri state/code mancanti nel callback",
+  "provider.openbao.oidc.timeout": "callback OIDC scaduto dopo {sec}s",
+  "provider.bitwarden.serverUrlNotSet":
+    "L'URL del server Bitwarden non è impostato",
+  "provider.bitwarden.deviceVerifCancelled":
+    "Verifica del dispositivo annullata",
+  "provider.bitwarden.twoFactorCancelled":
+    "Verifica a due fattori annullata",
+  "provider.bitwarden.loginRetriesExhausted": "tentativi di accesso esauriti",
+  "provider.bitwarden.totpNotEnabled":
+    "Autenticazione a due fattori richiesta ma TOTP non è abilitato su questo account (provider: {providers}). Abilita TOTP nella web vault di Bitwarden, oppure attendi il supporto del plugin per altri metodi.",
 };
