@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.0
+
+### Added
+- **Internationalization.** User-facing strings now go through a small
+  zero-dependency i18n layer, shipping English, Italian, Simplified Chinese,
+  Traditional Chinese, Japanese, and Korean. A new **Language** setting
+  follows Obsidian's UI language by default (`auto`) or can be set
+  explicitly. Command-palette names apply the language after a plugin
+  reload; notices and settings update immediately.
+
+## 0.6.1
+
+### Fixed
+- **Bitwarden per-cipher keys.** Ciphers encrypted with their own item key
+  (rather than the user/org key) are now decrypted and written back
+  correctly.
+
 ## 0.6.0
 
 First community-store release.

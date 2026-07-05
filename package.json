@@ -1,6 +1,6 @@
 {
   "name": "obsidian-secret-placeholders",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Embed password-manager secrets in Obsidian notes as placeholders so the .md never contains the credential.",
   "main": "main.js",
   "scripts": {
