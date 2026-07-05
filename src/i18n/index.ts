@@ -7,13 +7,18 @@
 //   new Notice(t("notice.savedTo", { ref }));
 import { en, type Messages, type MessageKey } from "./en";
 import { it } from "./it";
+import { zh } from "./zh";
+import { zhTW } from "./zh-TW";
+import { ja } from "./ja";
+import { ko } from "./ko";
 
-/** Concrete locales we ship. */
-export type Locale = "en" | "it";
+/** Concrete locales we ship. Keys match Obsidian's own UI language codes so
+ *  "auto" resolution is a direct lookup. */
+export type Locale = "en" | "it" | "zh" | "zh-TW" | "ja" | "ko";
 /** Setting value: a concrete locale or "auto" (follow Obsidian's UI). */
 export type Lang = "auto" | Locale;
 
-const LOCALES: Record<Locale, Messages> = { en, it };
+const LOCALES: Record<Locale, Messages> = { en, it, zh, "zh-TW": zhTW, ja, ko };
 
 let active: Messages = en;
 
@@ -57,5 +62,9 @@ export function languageOptions(): Record<Lang, string> {
     auto: t("settings.language.auto"),
     en: "English",
     it: "Italiano",
+    zh: "简体中文",
+    "zh-TW": "繁體中文",
+    ja: "日本語",
+    ko: "한국어",
   };
 }
