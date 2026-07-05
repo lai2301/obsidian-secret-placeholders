@@ -4,6 +4,8 @@
 
 import { App, ButtonComponent, Modal, Setting } from "obsidian";
 
+import { t } from "../../i18n";
+
 export interface BitwardenCredentials {
   email: string;
   masterPassword: string;
@@ -27,20 +29,22 @@ export class BitwardenLoginModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "Log in to Bitwarden / Vaultwarden" });
+    contentEl.createEl("h3", { text: t("provider.bitwarden.loginTitle") });
     contentEl.createEl("p", {
-      text: `Server: ${this.serverUrl || "(set the server URL in settings first)"}`,
+      text: t("provider.bitwarden.loginServer", {
+        server: this.serverUrl || t("provider.bitwarden.loginServerUnset"),
+      }),
     });
     contentEl.createEl("p", {
-      text: "Your master password is used locally to derive the keys; only a derived hash is sent to the server.",
+      text: t("provider.bitwarden.loginMasterPasswordHint"),
       cls: "setting-item-description",
     });
 
-    new Setting(contentEl).setName("Email").addText((t) => {
-      t.setValue(this.email).onChange((v) => (this.email = v.trim()));
-      t.inputEl.type = "email";
-      if (!this.defaultEmail) t.inputEl.focus();
-      t.inputEl.addEventListener("keydown", (e) => {
+    new Setting(contentEl).setName(t("provider.bitwarden.emailField")).addText((txt) => {
+      txt.setValue(this.email).onChange((v) => (this.email = v.trim()));
+      txt.inputEl.type = "email";
+      if (!this.defaultEmail) txt.inputEl.focus();
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           this.submit();
@@ -48,11 +52,11 @@ export class BitwardenLoginModal extends Modal {
       });
     });
 
-    new Setting(contentEl).setName("Master password").addText((t) => {
-      t.inputEl.type = "password";
-      t.onChange((v) => (this.masterPassword = v));
-      if (this.defaultEmail) t.inputEl.focus();
-      t.inputEl.addEventListener("keydown", (e) => {
+    new Setting(contentEl).setName(t("provider.bitwarden.masterPassword")).addText((txt) => {
+      txt.inputEl.type = "password";
+      txt.onChange((v) => (this.masterPassword = v));
+      if (this.defaultEmail) txt.inputEl.focus();
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           this.submit();
@@ -62,11 +66,11 @@ export class BitwardenLoginModal extends Modal {
 
     new Setting(contentEl)
       .addButton((b) => {
-        b.setButtonText("Log in").setCta().onClick(() => this.submit());
+        b.setButtonText(t("button.logIn")).setCta().onClick(() => this.submit());
         this.submitBtn = b;
       })
       .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => {
+        b.setButtonText(t("button.cancel")).onClick(() => {
           if (this.busy) return;
           this.onSubmit(null);
           this.close();
@@ -78,7 +82,7 @@ export class BitwardenLoginModal extends Modal {
     if (this.busy) return;
     if (!this.email || !this.masterPassword) return;
     this.busy = true;
-    this.submitBtn?.setButtonText("Logging in…").setDisabled(true);
+    this.submitBtn?.setButtonText(t("provider.bitwarden.loggingIn")).setDisabled(true);
 
     const creds = { email: this.email, masterPassword: this.masterPassword };
     // Clear before handing off so the field doesn't linger in any DOM cache.
@@ -112,20 +116,20 @@ export class TwoFactorOtpModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "Two-factor authentication" });
+    contentEl.createEl("h3", { text: t("provider.bitwarden.twoFactorTitle") });
     contentEl.createEl("p", {
-      text: "Enter the 6-digit code from your authenticator app to finish logging in.",
+      text: t("provider.bitwarden.twoFactorHint"),
       cls: "setting-item-description",
     });
 
-    new Setting(contentEl).setName("Code").addText((t) => {
-      t.inputEl.inputMode = "numeric";
-      t.inputEl.maxLength = 8;
-      t.inputEl.focus();
-      t.setPlaceholder("123456").onChange(
+    new Setting(contentEl).setName(t("provider.bitwarden.code")).addText((txt) => {
+      txt.inputEl.inputMode = "numeric";
+      txt.inputEl.maxLength = 8;
+      txt.inputEl.focus();
+      txt.setPlaceholder("123456").onChange(
         (v) => (this.code = v.replace(/\s+/g, "")),
       );
-      t.inputEl.addEventListener("keydown", (e) => {
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           this.submit();
@@ -135,11 +139,11 @@ export class TwoFactorOtpModal extends Modal {
 
     new Setting(contentEl)
       .addButton((b) => {
-        b.setButtonText("Verify").setCta().onClick(() => this.submit());
+        b.setButtonText(t("provider.bitwarden.verify")).setCta().onClick(() => this.submit());
         this.submitBtn = b;
       })
       .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => {
+        b.setButtonText(t("button.cancel")).onClick(() => {
           if (this.busy) return;
           this.onSubmit(null);
           this.close();
@@ -151,7 +155,7 @@ export class TwoFactorOtpModal extends Modal {
     if (this.busy) return;
     if (!this.code) return;
     this.busy = true;
-    this.submitBtn?.setButtonText("Verifying…").setDisabled(true);
+    this.submitBtn?.setButtonText(t("provider.bitwarden.verifying")).setDisabled(true);
 
     const code = this.code;
     this.close();
@@ -180,20 +184,20 @@ export class NewDeviceOtpModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "New device verification" });
+    contentEl.createEl("h3", { text: t("provider.bitwarden.newDeviceTitle") });
     contentEl.createEl("p", {
-      text: `Bitwarden emailed a 6-digit code to ${this.email}.  Paste it below to finish logging in.  This is a one-time check for this device.`,
+      text: t("provider.bitwarden.newDeviceHint", { email: this.email }),
       cls: "setting-item-description",
     });
 
-    new Setting(contentEl).setName("Code").addText((t) => {
-      t.inputEl.inputMode = "numeric";
-      t.inputEl.maxLength = 8;
-      t.inputEl.focus();
-      t.setPlaceholder("123456").onChange(
+    new Setting(contentEl).setName(t("provider.bitwarden.code")).addText((txt) => {
+      txt.inputEl.inputMode = "numeric";
+      txt.inputEl.maxLength = 8;
+      txt.inputEl.focus();
+      txt.setPlaceholder("123456").onChange(
         (v) => (this.code = v.replace(/\s+/g, "")),
       );
-      t.inputEl.addEventListener("keydown", (e) => {
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           this.submit();
@@ -203,11 +207,11 @@ export class NewDeviceOtpModal extends Modal {
 
     new Setting(contentEl)
       .addButton((b) => {
-        b.setButtonText("Verify").setCta().onClick(() => this.submit());
+        b.setButtonText(t("provider.bitwarden.verify")).setCta().onClick(() => this.submit());
         this.submitBtn = b;
       })
       .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => {
+        b.setButtonText(t("button.cancel")).onClick(() => {
           if (this.busy) return;
           this.onSubmit(null);
           this.close();
@@ -219,7 +223,7 @@ export class NewDeviceOtpModal extends Modal {
     if (this.busy) return;
     if (!this.code) return;
     this.busy = true;
-    this.submitBtn?.setButtonText("Verifying…").setDisabled(true);
+    this.submitBtn?.setButtonText(t("provider.bitwarden.verifying")).setDisabled(true);
 
     const code = this.code;
     this.close();

@@ -1,4 +1,5 @@
 import { App, Modal, Setting } from "obsidian";
+import { t } from "./i18n";
 import type { Provider } from "./providers/types";
 
 export class TokenPromptModal extends Modal {
@@ -12,26 +13,26 @@ export class TokenPromptModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "Paste token" });
+    contentEl.createEl("h3", { text: t("modal.token.title") });
     contentEl.createEl("p", {
-      text: "Paste an authentication token from your provider. For OpenBao, run `bao login -method=oidc role=obsidian` or copy from the web UI.",
+      text: t("modal.token.desc"),
     });
-    new Setting(contentEl).addText((t) => {
-      t.inputEl.type = "password";
-      t.setPlaceholder("token...").onChange((v) => (this.token = v));
-      t.inputEl.focus();
-      t.inputEl.addEventListener("keydown", (e) => {
+    new Setting(contentEl).addText((txt) => {
+      txt.inputEl.type = "password";
+      txt.setPlaceholder(t("modal.token.placeholder")).onChange((v) => (this.token = v));
+      txt.inputEl.focus();
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") this.submit();
       });
     });
     new Setting(contentEl)
       .addButton((b) =>
         b
-          .setButtonText("Save")
+          .setButtonText(t("button.save"))
           .setCta()
           .onClick(() => this.submit()),
       )
-      .addButton((b) => b.setButtonText("Cancel").onClick(() => this.close()));
+      .addButton((b) => b.setButtonText(t("button.cancel")).onClick(() => this.close()));
   }
 
   private submit(): void {
@@ -57,23 +58,23 @@ export class PassphraseModal extends Modal {
   }
   onOpen(): void {
     this.contentEl.createEl("h3", { text: this.title });
-    new Setting(this.contentEl).addText((t) => {
-      t.inputEl.type = "password";
-      t.onChange((v) => (this.value = v));
-      t.inputEl.focus();
-      t.inputEl.addEventListener("keydown", (e) => {
+    new Setting(this.contentEl).addText((txt) => {
+      txt.inputEl.type = "password";
+      txt.onChange((v) => (this.value = v));
+      txt.inputEl.focus();
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") this.submit();
       });
     });
     new Setting(this.contentEl)
       .addButton((b) =>
         b
-          .setButtonText("OK")
+          .setButtonText(t("button.ok"))
           .setCta()
           .onClick(() => this.submit()),
       )
       .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => {
+        b.setButtonText(t("button.cancel")).onClick(() => {
           this.onSubmit(null);
           this.close();
         }),
@@ -107,7 +108,7 @@ export class RefEditorModal extends Modal {
 
   onOpen(): void {
     this.contentEl.createEl("h3", {
-      text: `Secret location (${this.provider.displayName})`,
+      text: t("modal.refEditor.title", { provider: this.provider.displayName }),
     });
 
     const optional = new Set(this.provider.optionalRefParts ?? []);
@@ -115,9 +116,9 @@ export class RefEditorModal extends Modal {
     for (const field of Object.keys(this.parts)) {
       const label = field.charAt(0).toUpperCase() + field.slice(1);
       new Setting(this.contentEl)
-        .setName(optional.has(field) ? `${label} (optional)` : label)
-        .addText((t) =>
-          t
+        .setName(optional.has(field) ? t("modal.refEditor.optional", { label }) : label)
+        .addText((txt) =>
+          txt
             .setValue(this.parts[field])
             .onChange((v) => (this.parts[field] = v.trim())),
         );
@@ -126,7 +127,7 @@ export class RefEditorModal extends Modal {
     new Setting(this.contentEl)
       .addButton((b) =>
         b
-          .setButtonText("OK")
+          .setButtonText(t("button.ok"))
           .setCta()
           .onClick(() => {
             // Required parts must be non-empty; optional ones may be blank.
@@ -139,7 +140,7 @@ export class RefEditorModal extends Modal {
           }),
       )
       .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => {
+        b.setButtonText(t("button.cancel")).onClick(() => {
           this.close();
           this.onSubmit(null);
         }),

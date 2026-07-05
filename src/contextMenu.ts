@@ -22,6 +22,7 @@ import {
   TFile,
 } from "obsidian";
 
+import { t } from "./i18n";
 import type SecretPlaceholdersPlugin from "./main";
 import { RefEditorModal } from "./modals";
 import { openEditSecretModal } from "./modals/editSecret";
@@ -84,7 +85,7 @@ export function registerEditorContextMenu(
         for (const provider of plugin.registry.all()) {
           menu.addItem((item) => {
             item
-              .setTitle(`Save selection to ${provider.displayName}`)
+              .setTitle(t("contextMenu.saveSelectionTo", { provider: provider.displayName }))
               .setIcon("key")
               .onClick(() => {
                 void saveSelectionAsSecret(
@@ -102,7 +103,7 @@ export function registerEditorContextMenu(
       if (hit) {
         menu.addItem((item) => {
           item
-            .setTitle("Copy resolved value")
+            .setTitle(t("contextMenu.copyResolvedValue"))
             .setIcon("clipboard-copy")
             .onClick(() => {
               void copyResolved(hit);
@@ -110,7 +111,7 @@ export function registerEditorContextMenu(
         });
         menu.addItem((item) => {
           item
-            .setTitle("Edit secret value…")
+            .setTitle(t("contextMenu.editSecretValue"))
             .setIcon("pencil")
             .onClick(() => {
               openEditSecretModal(plugin, hit.provider, hit.ref);
@@ -118,7 +119,7 @@ export function registerEditorContextMenu(
         });
         menu.addItem((item) => {
           item
-            .setTitle("Replace with resolved value…")
+            .setTitle(t("contextMenu.replaceWithResolved"))
             .setIcon("alert-triangle")
             .onClick(() => {
               void replaceInEditor(plugin, editor, cursor, hit);
@@ -146,7 +147,7 @@ export function attachSpanContextMenu(
     const menu = new Menu();
     menu.addItem((item) =>
       item
-        .setTitle("Copy resolved value")
+        .setTitle(t("contextMenu.copyResolvedValue"))
         .setIcon("clipboard-copy")
         .onClick(() => {
           void copyResolved({
@@ -159,7 +160,7 @@ export function attachSpanContextMenu(
     );
     menu.addItem((item) =>
       item
-        .setTitle("Edit secret value…")
+        .setTitle(t("contextMenu.editSecretValue"))
         .setIcon("pencil")
         .onClick(() => {
           openEditSecretModal(plugin, provider, ref);
@@ -167,7 +168,7 @@ export function attachSpanContextMenu(
     );
     menu.addItem((item) =>
       item
-        .setTitle("Replace with resolved value…")
+        .setTitle(t("contextMenu.replaceWithResolved"))
         .setIcon("alert-triangle")
         .onClick(() => {
           void replaceInActiveFile(plugin, provider, ref);
@@ -186,7 +187,7 @@ async function saveSelectionAsSecret(
 ): Promise<void> {
   const status = await provider.auth.status();
   if (!status.loggedIn) {
-    new Notice(`${provider.displayName}: log in first`);
+    new Notice(t("notice.logInFirst", { provider: provider.displayName }));
     return;
   }
   const defaults = provider.suggestRefDefaults(noteCtxFromView(view));
@@ -201,9 +202,9 @@ async function saveSelectionAsSecret(
       await provider.writeKey(ref, selection);
       editor.replaceSelection(ref.raw);
       plugin.refreshSecretData();
-      new Notice(`Saved to ${ref.raw.slice(2, -2)}`);
+      new Notice(t("notice.savedTo", { ref: ref.raw.slice(2, -2) }));
     } catch (e) {
-      new Notice(`Save failed: ${(e as Error).message}`);
+      new Notice(t("notice.saveFailed", { msg: (e as Error).message }));
     }
   }).open();
 }
@@ -212,9 +213,9 @@ async function copyResolved(hit: PlaceholderHit): Promise<void> {
   try {
     const value = await hit.provider.readKey(hit.ref);
     await navigator.clipboard.writeText(value);
-    new Notice("Secret copied to clipboard");
+    new Notice(t("notice.secretCopied"));
   } catch (e) {
-    new Notice(`Read failed: ${(e as Error).message}`);
+    new Notice(t("notice.readFailed", { msg: (e as Error).message }));
   }
 }
 
@@ -233,7 +234,7 @@ async function replaceInEditor(
   try {
     value = await hit.provider.readKey(hit.ref);
   } catch (e) {
-    new Notice(`Read failed: ${(e as Error).message}`);
+    new Notice(t("notice.readFailed", { msg: (e as Error).message }));
     return;
   }
   if (!(await confirmReplace(plugin, hit.ref, value))) return;
@@ -255,14 +256,14 @@ async function replaceInActiveFile(
 ): Promise<void> {
   const file = plugin.app.workspace.getActiveFile();
   if (!(file instanceof TFile)) {
-    new Notice("No active file to replace in");
+    new Notice(t("contextMenu.noActiveFile"));
     return;
   }
   let value: string;
   try {
     value = await provider.readKey(ref);
   } catch (e) {
-    new Notice(`Read failed: ${(e as Error).message}`);
+    new Notice(t("notice.readFailed", { msg: (e as Error).message }));
     return;
   }
   if (!(await confirmReplace(plugin, ref, value))) return;
@@ -272,7 +273,7 @@ async function replaceInActiveFile(
     if (idx < 0) return content;
     return content.slice(0, idx) + value + content.slice(idx + ref.raw.length);
   });
-  new Notice("Placeholder replaced");
+  new Notice(t("contextMenu.placeholderReplaced"));
 }
 
 function confirmReplace(
@@ -297,7 +298,7 @@ class ConfirmReplaceModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "Write secret to file?" });
+    contentEl.createEl("h3", { text: t("contextMenu.confirmReplace.title") });
 
     const masked = "•".repeat(Math.min(this.value.length, 12));
     const preview =
@@ -306,21 +307,17 @@ class ConfirmReplaceModal extends Modal {
         : `${this.value.slice(0, 2)}${masked}${this.value.slice(-2)}`;
 
     contentEl.createEl("p", {
-      text:
-        `Replacing this placeholder will write the secret (${preview}) ` +
-        `inline as plain text in this note.  This is intentional in some ` +
-        `workflows but it defeats the plugin's main purpose - the .md ` +
-        `file on disk will contain the credential.`,
+      text: t("contextMenu.confirmReplace.body", { preview }),
     });
     contentEl.createEl("p", {
       cls: "setting-item-description",
-      text: `Placeholder: ${this.ref.raw}`,
+      text: t("contextMenu.confirmReplace.placeholder", { ref: this.ref.raw }),
     });
 
     new Setting(contentEl)
       .addButton((b) =>
         b
-          .setButtonText("Replace inline")
+          .setButtonText(t("contextMenu.confirmReplace.replaceInline"))
           .setWarning()
           .onClick(() => {
             this.onResult(true);
@@ -329,7 +326,7 @@ class ConfirmReplaceModal extends Modal {
       )
       .addButton((b) =>
         b
-          .setButtonText("Cancel")
+          .setButtonText(t("button.cancel"))
           .setCta()
           .onClick(() => {
             this.onResult(false);

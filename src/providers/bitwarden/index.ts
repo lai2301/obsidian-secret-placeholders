@@ -15,6 +15,7 @@
 
 import { Notice, Setting } from "obsidian";
 
+import { t } from "../../i18n";
 import { renderAuthStatusRow } from "../../authStatusRow";
 import {
   decryptBytesWithPassphrase,
@@ -158,7 +159,7 @@ export class BitwardenProvider implements Provider {
       },
       login: async () => {
         if (!this.settings.baseUrl) {
-          new Notice("Bitwarden: set the server URL in settings first");
+          new Notice(t("provider.bitwarden.serverNotSet"));
           return;
         }
         return this.startLoginFlow();
@@ -223,7 +224,7 @@ export class BitwardenProvider implements Provider {
       return;
     }
     const passphrase = await this.ctx.promptPassphrase(
-      "Unlock Bitwarden session",
+      t("provider.bitwarden.unlockSession"),
     );
     if (!passphrase) return;
     try {
@@ -254,13 +255,12 @@ export class BitwardenProvider implements Provider {
       };
       this.ctx.notifyAuthChanged(this.id);
       this.notify();
-      new Notice("Bitwarden session restored");
+      new Notice(t("provider.bitwarden.sessionRestored"));
     } catch (e) {
       // Wrong passphrase or expired refresh token - leave the encrypted
       // blobs in place and fall back to the regular master-password flow.
       new Notice(
-        `Could not restore Bitwarden session: ${(e as Error).message}. ` +
-          `Use 'Log in' to sign in with master password.`,
+        t("provider.bitwarden.restoreFailed", { msg: (e as Error).message }),
       );
     }
   }
@@ -278,7 +278,7 @@ export class BitwardenProvider implements Provider {
       return;
     }
     const passphrase = await this.ctx.promptPassphrase(
-      "Set unlock passphrase for this device",
+      t("provider.bitwarden.setUnlockPassphrase"),
     );
     if (!passphrase) {
       // User cancelled - turn rememberSession back off and clear any old
@@ -335,9 +335,9 @@ export class BitwardenProvider implements Provider {
           if (!creds) return resolve();
           try {
             await this.performLogin(creds.email, creds.masterPassword);
-            new Notice("Bitwarden: logged in");
+            new Notice(t("provider.bitwarden.loggedIn"));
           } catch (e) {
-            new Notice(`Bitwarden login failed: ${(e as Error).message}`);
+            new Notice(t("provider.bitwarden.loginFailed", { msg: (e as Error).message }));
           }
           this.ctx.notifyAuthChanged(this.id);
           this.notify();
@@ -352,7 +352,7 @@ export class BitwardenProvider implements Provider {
     masterPassword: string,
   ): Promise<void> {
     if (!this.client) {
-      throw new Error("Bitwarden server URL is not set");
+      throw new Error(t("provider.bitwarden.serverUrlNotSet"));
     }
     this.settings.email = email;
     await this.persist();
@@ -389,7 +389,7 @@ export class BitwardenProvider implements Provider {
       } catch (e) {
         if (BitwardenClient.isDeviceVerificationError(e) && !newDeviceOtp) {
           const otp = await this.promptDeviceOtp(email);
-          if (!otp) throw new Error("Device verification cancelled");
+          if (!otp) throw new Error(t("provider.bitwarden.deviceVerifCancelled"));
           newDeviceOtp = otp;
           continue;
         }
@@ -397,19 +397,20 @@ export class BitwardenProvider implements Provider {
         if (twoFa && !twoFactor) {
           if (!twoFa.providers.includes(0)) {
             throw new Error(
-              `Two-factor required but TOTP is not enabled on this account (providers: ${twoFa.providers.join(", ")}). ` +
-                `Enable TOTP in the Bitwarden web vault, or wait for plugin support for other methods.`,
+              t("provider.bitwarden.totpNotEnabled", {
+                providers: twoFa.providers.join(", "),
+              }),
             );
           }
           const code = await this.promptTwoFactorOtp();
-          if (!code) throw new Error("Two-factor verification cancelled");
+          if (!code) throw new Error(t("provider.bitwarden.twoFactorCancelled"));
           twoFactor = { token: code, provider: "0" };
           continue;
         }
         throw e;
       }
     }
-    if (!loginRes) throw new Error("login retries exhausted");
+    if (!loginRes) throw new Error(t("provider.bitwarden.loginRetriesExhausted"));
     this.client.setTokens(
       loginRes.access_token,
       loginRes.expires_in,
@@ -623,18 +624,16 @@ export class BitwardenProvider implements Provider {
 
   renderSettings(containerEl: HTMLElement): void {
     new Setting(containerEl)
-      .setName("Bitwarden / Vaultwarden")
+      .setName(t("provider.bitwarden.serverHeading"))
       .setHeading();
 
     renderAuthStatusRow(containerEl, this);
 
     new Setting(containerEl)
-      .setName("Server URL")
-      .setDesc(
-        "Vaultwarden instance, e.g. https://vw.example.com. For Bitwarden cloud use https://vault.bitwarden.com (US) or https://vault.bitwarden.eu (EU).",
-      )
-      .addText((t) =>
-        t
+      .setName(t("provider.bitwarden.serverUrl.name"))
+      .setDesc(t("provider.bitwarden.serverUrl.desc"))
+      .addText((txt) =>
+        txt
           .setPlaceholder("https://vw.example.com")
           .setValue(this.settings.baseUrl)
           .onChange(async (v) => {
@@ -651,19 +650,19 @@ export class BitwardenProvider implements Provider {
       );
 
     new Setting(containerEl)
-      .setName("Email")
-      .addText((t) =>
-        t.setValue(this.settings.email).onChange(async (v) => {
+      .setName(t("provider.bitwarden.email.name"))
+      .addText((txt) =>
+        txt.setValue(this.settings.email).onChange(async (v) => {
           this.settings.email = v.trim();
           await this.persist();
         }),
       );
 
     new Setting(containerEl)
-      .setName("Cache TTL (seconds)")
-      .setDesc("How long the decrypted cipher list is kept in memory.")
-      .addText((t) =>
-        t.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
+      .setName(t("provider.bitwarden.cacheTtl.name"))
+      .setDesc(t("provider.bitwarden.cacheTtl.desc"))
+      .addText((txt) =>
+        txt.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
           const n = Number(v);
           if (!Number.isFinite(n) || n < 0) return;
           this.settings.cacheTtlSec = n;
@@ -672,12 +671,10 @@ export class BitwardenProvider implements Provider {
       );
 
     new Setting(containerEl)
-      .setName("Remember session on this device")
-      .setDesc(
-        "On login, encrypt the user key + refresh token with a passphrase and store them on disk. On the next Obsidian start you'll be prompted for the passphrase instead of the master password. Off by default.",
-      )
-      .addToggle((t) =>
-        t
+      .setName(t("provider.bitwarden.rememberSession.name"))
+      .setDesc(t("provider.bitwarden.rememberSession.desc"))
+      .addToggle((tog) =>
+        tog
           .setValue(this.settings.rememberSession)
           .onChange(async (v) => {
             this.settings.rememberSession = v;
