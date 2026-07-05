@@ -3,6 +3,7 @@
 
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type SecretPlaceholdersPlugin from "./main";
+import { t, setLocale, languageOptions, type Lang } from "./i18n";
 
 export type MaskMode = "never" | "always" | "manual";
 export type ClickAction = "copy" | "toggle-mask" | "none";
@@ -25,6 +26,8 @@ export interface Settings {
    *  enabled provider is shown.  Lets users hide chips they don't care
    *  about (e.g. show only the one they actually use). */
   statusBarProviders: string[];
+  /** Interface language. "auto" follows Obsidian's UI language. */
+  language: Lang;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,19 +37,20 @@ export const DEFAULT_SETTINGS: Settings = {
   maskCharacter: "•",
   enabledProviders: { bao: true, "1p": true, vw: true },
   statusBarProviders: [],
+  language: "auto",
 };
 
-const MASK_MODE_OPTIONS: Record<MaskMode, string> = {
-  never: "Never (default)",
-  always: "Always",
-  manual: "Manual (masked, click to reveal)",
-};
+const maskModeOptions = (): Record<MaskMode, string> => ({
+  never: t("settings.maskMode.never"),
+  always: t("settings.maskMode.always"),
+  manual: t("settings.maskMode.manual"),
+});
 
-const CLICK_OPTIONS: Record<ClickAction, string> = {
-  copy: "Copy",
-  "toggle-mask": "Toggle mask",
-  none: "Do nothing",
-};
+const clickOptions = (): Record<ClickAction, string> => ({
+  copy: t("settings.click.copy"),
+  "toggle-mask": t("settings.click.toggleMask"),
+  none: t("settings.click.none"),
+});
 
 export class SecretPlaceholdersSettingTab extends PluginSettingTab {
   plugin: SecretPlaceholdersPlugin;
@@ -67,15 +71,29 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("Display").setHeading();
+    new Setting(containerEl)
+      .setName(t("settings.language.name"))
+      .setDesc(t("settings.language.desc"))
+      .addDropdown((d) => {
+        for (const [k, label] of Object.entries(languageOptions())) {
+          d.addOption(k, label);
+        }
+        d.setValue(this.plugin.settings.language);
+        d.onChange(async (v) => {
+          this.plugin.settings.language = v as Lang;
+          setLocale(this.plugin.settings.language);
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+
+    new Setting(containerEl).setName(t("settings.displayHeading")).setHeading();
 
     new Setting(containerEl)
-      .setName("Mask mode")
-      .setDesc(
-        "Whether resolved secrets are hidden by default. The placeholder text on disk is never the secret regardless of this setting.",
-      )
+      .setName(t("settings.maskMode.name"))
+      .setDesc(t("settings.maskMode.desc"))
       .addDropdown((d) => {
-        for (const [k, label] of Object.entries(MASK_MODE_OPTIONS)) {
+        for (const [k, label] of Object.entries(maskModeOptions())) {
           d.addOption(k, label);
         }
         d.setValue(this.plugin.settings.maskMode);
@@ -86,10 +104,10 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Click action")
-      .setDesc("Action for a single click on a resolved secret.")
+      .setName(t("settings.clickAction.name"))
+      .setDesc(t("settings.clickAction.desc"))
       .addDropdown((d) => {
-        for (const [k, label] of Object.entries(CLICK_OPTIONS)) {
+        for (const [k, label] of Object.entries(clickOptions())) {
           d.addOption(k, label);
         }
         d.setValue(this.plugin.settings.clickAction);
@@ -100,10 +118,10 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Modifier-click action")
-      .setDesc("Action for Ctrl/Cmd + single click.")
+      .setName(t("settings.modifierClickAction.name"))
+      .setDesc(t("settings.modifierClickAction.desc"))
       .addDropdown((d) => {
-        for (const [k, label] of Object.entries(CLICK_OPTIONS)) {
+        for (const [k, label] of Object.entries(clickOptions())) {
           d.addOption(k, label);
         }
         d.setValue(this.plugin.settings.modifierClickAction);
@@ -114,9 +132,9 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Mask character")
-      .addText((t) =>
-        t.setValue(this.plugin.settings.maskCharacter).onChange(async (v) => {
+      .setName(t("settings.maskCharacter.name"))
+      .addText((txt) =>
+        txt.setValue(this.plugin.settings.maskCharacter).onChange(async (v) => {
           this.plugin.settings.maskCharacter = v.slice(0, 1) || "•";
           await this.plugin.saveSettings();
         }),
@@ -125,7 +143,7 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
     // Provider on/off toggles + status-bar visibility.  Available providers
     // are the union of registered providers and any saved enabledProviders
     // keys, so toggling something off doesn't make it disappear.
-    new Setting(containerEl).setName("Providers").setHeading();
+    new Setting(containerEl).setName(t("settings.providersHeading")).setHeading();
 
     const knownIds = new Set<string>();
     for (const p of this.plugin.registry.all()) knownIds.add(p.id);
@@ -145,8 +163,8 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
         .setName(name)
         .setDesc(
           enabled
-            ? `Settings, status bar, and {{${id}:...}} placeholders are active.`
-            : "Disabled. No settings, no placeholders, no autocomplete.",
+            ? t("settings.provider.enabledDesc", { example: `{{${id}:...}}` })
+            : t("settings.provider.disabledDesc"),
         )
         .addToggle((t) =>
           t.setValue(enabled).onChange(async (v) => {
@@ -159,17 +177,15 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
     }
 
     new Setting(containerEl)
-      .setName("Status bar")
-      .setDesc(
-        "Pick which providers show as chips in the status bar. Leave all unchecked to show every enabled provider.",
-      );
+      .setName(t("settings.statusBar.name"))
+      .setDesc(t("settings.statusBar.desc"));
     for (const id of knownIds) {
       if (this.plugin.settings.enabledProviders[id] === false) continue;
       const name = displayNames[id] ?? id;
       const checked =
         this.plugin.settings.statusBarProviders.includes(id);
       new Setting(containerEl)
-        .setName(`Show ${name}`)
+        .setName(t("settings.statusBar.show", { name }))
         .addToggle((t) =>
           t.setValue(checked).onChange(async (v) => {
             const list = new Set(this.plugin.settings.statusBarProviders);

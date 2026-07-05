@@ -2,6 +2,7 @@
 
 import { Notice, Platform, Setting } from "obsidian";
 
+import { t } from "../../i18n";
 import {
   NoteContext,
   PluginContext,
@@ -103,18 +104,20 @@ export class OpenBaoProvider implements Provider {
             try {
               const info = await this.client.lookupSelf();
               new Notice(
-                `OpenBao login OK - policies: ${info.policies.join(", ") || "(none)"}`,
+                t("provider.openbao.loginOkPolicies", {
+                  policies: info.policies.join(", ") || t("provider.openbao.policiesNone"),
+                }),
               );
             } catch {
-              new Notice("OpenBao login OK");
+              new Notice(t("provider.openbao.loginOk"));
             }
             this.ctx.notifyAuthChanged(this.id);
             return;
           } catch (e) {
             if (e instanceof OidcLoginError) {
-              new Notice(`OIDC login failed: ${e.message}`);
+              new Notice(t("provider.openbao.oidcLoginFailed", { msg: e.message }));
             } else {
-              new Notice(`OIDC login failed: ${(e as Error).message}`);
+              new Notice(t("provider.openbao.oidcLoginFailed", { msg: (e as Error).message }));
             }
             // Fall through to paste-token as a manual escape hatch.
           }
@@ -138,10 +141,12 @@ export class OpenBaoProvider implements Provider {
         try {
           const info = await this.client.lookupSelf();
           new Notice(
-            `OpenBao login OK - policies: ${info.policies.join(", ") || "(none)"}`,
+            t("provider.openbao.loginOkPolicies", {
+              policies: info.policies.join(", ") || t("provider.openbao.policiesNone"),
+            }),
           );
         } catch (e) {
-          new Notice(`OpenBao token rejected: ${(e as Error).message}`);
+          new Notice(t("provider.openbao.tokenRejected", { msg: (e as Error).message }));
         }
         this.ctx.notifyAuthChanged(this.id);
         resolve();
@@ -243,13 +248,13 @@ export class OpenBaoProvider implements Provider {
   }
 
   renderSettings(containerEl: HTMLElement): void {
-    new Setting(containerEl).setName("OpenBao / Vault").setHeading();
+    new Setting(containerEl).setName(t("provider.openbao.heading")).setHeading();
 
     renderAuthStatusRow(containerEl, this, {
       extraActions: Platform.isDesktopApp
         ? [
             {
-              label: "Paste token",
+              label: t("provider.openbao.pasteToken"),
               showWhen: "logged-out",
               onClick: () => this.pasteTokenLogin(),
             },
@@ -258,10 +263,10 @@ export class OpenBaoProvider implements Provider {
     });
 
     new Setting(containerEl)
-      .setName("Server address")
-      .setDesc("Base URL of the OpenBao server. No trailing slash.")
-      .addText((t) =>
-        t
+      .setName(t("provider.openbao.serverAddress.name"))
+      .setDesc(t("provider.openbao.serverAddress.desc"))
+      .addText((txt) =>
+        txt
           .setPlaceholder("https://openbao.example.com")
           .setValue(this.settings.baseUrl)
           .onChange(async (v) => {
@@ -271,28 +276,28 @@ export class OpenBaoProvider implements Provider {
       );
 
     new Setting(containerEl)
-      .setName("OIDC role")
-      .addText((t) =>
-        t.setValue(this.settings.oidcRole).onChange(async (v) => {
+      .setName(t("provider.openbao.oidcRole.name"))
+      .addText((txt) =>
+        txt.setValue(this.settings.oidcRole).onChange(async (v) => {
           this.settings.oidcRole = v.trim();
           await this.persist();
         }),
       );
 
     new Setting(containerEl)
-      .setName("Default mount")
-      .addText((t) =>
-        t.setValue(this.settings.defaultMount).onChange(async (v) => {
+      .setName(t("provider.openbao.defaultMount.name"))
+      .addText((txt) =>
+        txt.setValue(this.settings.defaultMount).onChange(async (v) => {
           this.settings.defaultMount = v.trim();
           await this.persist();
         }),
       );
 
     new Setting(containerEl)
-      .setName("Default path prefix")
-      .setDesc('e.g. "obsidian/" - prepended to suggested secret paths.')
-      .addText((t) =>
-        t
+      .setName(t("provider.openbao.defaultPathPrefix.name"))
+      .setDesc(t("provider.openbao.defaultPathPrefix.desc"))
+      .addText((txt) =>
+        txt
           .setValue(this.settings.defaultPathPrefix)
           .onChange(async (v) => {
             this.settings.defaultPathPrefix = v;
@@ -301,10 +306,10 @@ export class OpenBaoProvider implements Provider {
       );
 
     new Setting(containerEl)
-      .setName("Cache TTL (seconds)")
-      .setDesc("How long resolved secrets are kept in memory.")
-      .addText((t) =>
-        t.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
+      .setName(t("provider.openbao.cacheTtl.name"))
+      .setDesc(t("provider.openbao.cacheTtl.desc"))
+      .addText((txt) =>
+        txt.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
           const n = Number(v);
           if (!Number.isFinite(n) || n < 0) return;
           this.settings.cacheTtlSec = n;
@@ -313,12 +318,10 @@ export class OpenBaoProvider implements Provider {
       );
 
     new Setting(containerEl)
-      .setName("Remember token on this device")
-      .setDesc(
-        "Encrypts the token with a passphrase and stores it in plugin data.",
-      )
-      .addToggle((t) =>
-        t.setValue(this.settings.rememberToken).onChange(async (v) => {
+      .setName(t("provider.openbao.rememberToken.name"))
+      .setDesc(t("provider.openbao.rememberToken.desc"))
+      .addToggle((tog) =>
+        tog.setValue(this.settings.rememberToken).onChange(async (v) => {
           this.settings.rememberToken = v;
           if (!v) this.settings.encryptedToken = null;
           await this.persist();

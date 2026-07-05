@@ -12,6 +12,8 @@
 
 import { Platform, requestUrl } from "obsidian";
 
+import { t } from "../../i18n";
+
 export interface OidcLoginOptions {
   baseUrl: string;
   role: string;
@@ -54,7 +56,7 @@ export async function performOidcLogin(
   }
   const authUrl: string | undefined = authUrlRes.json?.data?.auth_url;
   if (!authUrl) {
-    throw new OidcLoginError("OpenBao did not return an auth_url");
+    throw new OidcLoginError(t("provider.openbao.oidc.noAuthUrl"));
   }
 
   // 2. Set up the loopback listener and 3. open the browser concurrently.
@@ -77,7 +79,7 @@ export async function performOidcLogin(
   }
   const token: string | undefined = cbRes.json?.auth?.client_token;
   if (!token) {
-    throw new OidcLoginError("callback response did not include client_token");
+    throw new OidcLoginError(t("provider.openbao.oidc.noClientToken"));
   }
   return { token };
 }
@@ -117,14 +119,18 @@ async function waitForCallback(
         res.end(FAILURE_HTML);
         server.close();
         reject(
-          new OidcLoginError("callback missing state/code query params"),
+          new OidcLoginError(t("provider.openbao.oidc.missingParams")),
         );
       }
     });
 
     const timer = setTimeout(() => {
       server.close();
-      reject(new OidcLoginError(`OIDC callback timed out after ${timeoutSec}s`));
+      reject(
+        new OidcLoginError(
+          t("provider.openbao.oidc.timeout", { sec: timeoutSec }),
+        ),
+      );
     }, timeoutSec * 1000);
     server.on("close", () => clearTimeout(timer));
     server.on("error", reject);

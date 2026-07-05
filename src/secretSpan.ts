@@ -6,6 +6,7 @@
 // Display-only - never writes back to the document.
 
 import { Notice, setIcon } from "obsidian";
+import { t } from "./i18n";
 import { attachSpanContextMenu } from "./contextMenu";
 import type SecretPlaceholdersPlugin from "./main";
 import type { Provider, ProviderRef } from "./providers/types";
@@ -75,7 +76,7 @@ export function renderSecretSpan(
         if (span.querySelector(".sp-secret__relogin")) return;
 
         const btn = span.createSpan({ cls: "sp-secret__relogin" });
-        btn.textContent = "Re-login";
+        btn.textContent = t("span.reLogin");
         btn.setAttr("role", "button");
         btn.addEventListener(
           "mousedown",
@@ -190,8 +191,8 @@ function applyAction(
       if (state.value === null) return;
       void navigator.clipboard
         .writeText(state.value)
-        .then(() => new Notice("Secret copied to clipboard"))
-        .catch(() => new Notice("Failed to copy"));
+        .then(() => new Notice(t("notice.secretCopied")))
+        .catch(() => new Notice(t("span.copyFailed")));
       return;
     }
     case "toggle-mask":

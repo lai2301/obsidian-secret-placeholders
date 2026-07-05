@@ -7,6 +7,7 @@
 
 import { Modal, Notice, Setting, setIcon } from "obsidian";
 
+import { t } from "../i18n";
 import type SecretPlaceholdersPlugin from "../main";
 import type { Provider, ProviderRef } from "../providers/types";
 
@@ -34,35 +35,35 @@ class EditSecretModal extends Modal {
 
   onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h3", { text: "Edit secret value" });
+    contentEl.createEl("h3", { text: t("modal.editSecret.title") });
     contentEl.createEl("p", {
       cls: "setting-item-description",
-      text: `Updates the backend secret only — the placeholder text in your note stays the same.`,
+      text: t("modal.editSecret.desc"),
     });
     contentEl.createEl("p", {
       cls: "setting-item-description",
-      text: `Provider: ${this.provider.displayName}`,
+      text: t("modal.editSecret.provider", { provider: this.provider.displayName }),
     });
     contentEl.createEl("p", {
       cls: "setting-item-description",
-      text: `Placeholder: ${this.ref.raw}`,
+      text: t("modal.editSecret.placeholder", { ref: this.ref.raw }),
     });
 
-    const currentRow = new Setting(contentEl).setName("Current value");
+    const currentRow = new Setting(contentEl).setName(t("modal.editSecret.currentValue"));
     const currentValEl = currentRow.controlEl.createSpan({
       cls: "sp-edit__current",
-      text: "(click to load)",
+      text: t("modal.editSecret.clickToLoad"),
     });
     currentRow.addButton((b) => {
-      b.setIcon("eye").setTooltip("Show / hide current value").onClick(
+      b.setIcon("eye").setTooltip(t("modal.editSecret.showHide")).onClick(
         async () => {
           if (this.currentValue === null) {
-            currentValEl.setText("loading…");
+            currentValEl.setText(t("modal.editSecret.loading"));
             try {
               this.currentValue = await this.provider.readKey(this.ref);
               this.currentValueRevealed = true;
             } catch (e) {
-              currentValEl.setText(`(error: ${(e as Error).message})`);
+              currentValEl.setText(t("modal.editSecret.error", { msg: (e as Error).message }));
               return;
             }
           } else {
@@ -77,11 +78,11 @@ class EditSecretModal extends Modal {
       );
     });
 
-    new Setting(contentEl).setName("New value").addText((t) => {
-      t.inputEl.type = "password";
-      t.setPlaceholder("new secret value").onChange((v) => (this.newValue = v));
-      t.inputEl.focus();
-      t.inputEl.addEventListener("keydown", (e) => {
+    new Setting(contentEl).setName(t("modal.editSecret.newValue")).addText((txt) => {
+      txt.inputEl.type = "password";
+      txt.setPlaceholder(t("modal.editSecret.newValuePlaceholder")).onChange((v) => (this.newValue = v));
+      txt.inputEl.focus();
+      txt.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           void this.submit();
@@ -92,32 +93,32 @@ class EditSecretModal extends Modal {
     new Setting(contentEl)
       .addButton((b) =>
         b
-          .setButtonText("Save")
+          .setButtonText(t("button.save"))
           .setCta()
           .onClick(() => void this.submit()),
       )
       .addButton((b) =>
-        b.setButtonText("Cancel").onClick(() => this.close()),
+        b.setButtonText(t("button.cancel")).onClick(() => this.close()),
       );
   }
 
   private async submit(): Promise<void> {
     if (this.busy) return;
     if (!this.newValue) {
-      new Notice("Enter a new value first");
+      new Notice(t("modal.editSecret.enterValueFirst"));
       return;
     }
     this.busy = true;
     try {
       await this.provider.writeKey(this.ref, this.newValue);
-      new Notice(`Updated ${this.ref.raw.slice(2, -2)}`);
+      new Notice(t("modal.editSecret.updated", { ref: this.ref.raw.slice(2, -2) }));
       this.close();
       // Drop provider + autocomplete caches and re-render every rendered
       // span so the new value shows immediately.
       this.plugin.refreshSecretData();
     } catch (e) {
       this.busy = false;
-      new Notice(`Write failed: ${(e as Error).message}`);
+      new Notice(t("modal.editSecret.writeFailed", { msg: (e as Error).message }));
     }
   }
 

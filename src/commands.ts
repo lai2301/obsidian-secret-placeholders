@@ -4,6 +4,7 @@
 
 import { MarkdownView, Notice } from "obsidian";
 
+import { t } from "./i18n";
 import type SecretPlaceholdersPlugin from "./main";
 import { RefEditorModal } from "./modals";
 import { SecretBrowserModal } from "./modals/secretBrowser";
@@ -29,37 +30,37 @@ async function isProviderLoggedIn(provider: Provider): Promise<boolean> {
 export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
   plugin.addCommand({
     id: "secrets-login",
-    name: "Secrets: Login to active provider",
+    name: t("command.login"),
     callback: async () => {
       const provider = activeProvider(plugin);
-      if (!provider) return new Notice("No provider configured");
+      if (!provider) return new Notice(t("notice.noProviderConfigured"));
       await provider.auth.login();
     },
   });
 
   plugin.addCommand({
     id: "secrets-logout",
-    name: "Secrets: Logout of active provider",
+    name: t("command.logout"),
     callback: async () => {
       const provider = activeProvider(plugin);
       if (!provider) return;
       await provider.auth.logout();
-      new Notice(`${provider.displayName}: logged out`);
+      new Notice(t("notice.loggedOut", { provider: provider.displayName }));
     },
   });
 
   plugin.addCommand({
     id: "secrets-clear-cache",
-    name: "Secrets: Clear cache",
+    name: t("command.clearCache"),
     callback: () => {
       plugin.refreshSecretData();
-      new Notice("Secret cache cleared");
+      new Notice(t("notice.cacheCleared"));
     },
   });
 
   plugin.addCommand({
     id: "secrets-save-selection",
-    name: "Secrets: Save selection as secret",
+    name: t("command.saveSelection"),
     editorCheckCallback: (checking, editor, view) => {
       const sel = editor.getSelection();
       if (!sel) return false;
@@ -69,7 +70,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
 
       void (async () => {
         if (!(await isProviderLoggedIn(provider))) {
-          new Notice(`${provider.displayName}: log in first`);
+          new Notice(t("notice.logInFirst", { provider: provider.displayName }));
           return;
         }
         const defaults = provider.suggestRefDefaults(
@@ -90,9 +91,9 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
               await provider.writeKey(ref, sel);
               editor.replaceSelection(ref.raw);
               plugin.refreshSecretData();
-              new Notice(`Saved to ${ref.raw.slice(2, -2)}`);
+              new Notice(t("notice.savedTo", { ref: ref.raw.slice(2, -2) }));
             } catch (e) {
-              new Notice(`Save failed: ${(e as Error).message}`);
+              new Notice(t("notice.saveFailed", { msg: (e as Error).message }));
             }
           },
         ).open();
@@ -102,7 +103,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
 
   plugin.addCommand({
     id: "secrets-insert-placeholder",
-    name: "Secrets: Insert placeholder",
+    name: t("command.insertPlaceholder"),
     editorCheckCallback: (checking, editor, view) => {
       const provider = activeProvider(plugin);
       if (!provider) return false;
@@ -110,7 +111,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
 
       void (async () => {
         if (!(await isProviderLoggedIn(provider))) {
-          new Notice(`${provider.displayName}: log in first`);
+          new Notice(t("notice.logInFirst", { provider: provider.displayName }));
           return;
         }
         const defaults = provider.suggestRefDefaults(
@@ -126,7 +127,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
 
   plugin.addCommand({
     id: "secrets-browse-and-insert",
-    name: "Secrets: Browse and insert placeholder",
+    name: t("command.browseInsert"),
     editorCheckCallback: (checking, editor) => {
       if (plugin.registry.all().length === 0) return false;
       if (checking) return true;
@@ -138,16 +139,16 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
 
   plugin.addCommand({
     id: "secrets-browse-and-copy",
-    name: "Secrets: Browse and copy value",
+    name: t("command.browseCopy"),
     callback: () => {
       if (plugin.registry.all().length === 0) return;
       new SecretBrowserModal(plugin.app, plugin, async (entry) => {
         try {
           const v = await entry.provider.readKey(entry.ref);
           await navigator.clipboard.writeText(v);
-          new Notice("Secret copied to clipboard");
+          new Notice(t("notice.secretCopied"));
         } catch (e) {
-          new Notice(`Read failed: ${(e as Error).message}`);
+          new Notice(t("notice.readFailed", { msg: (e as Error).message }));
         }
       }).open();
     },
@@ -155,7 +156,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
 
   plugin.addCommand({
     id: "secrets-copy-under-cursor",
-    name: "Secrets: Copy secret under cursor",
+    name: t("command.copyUnderCursor"),
     editorCheckCallback: (checking, editor) => {
       const line = editor.getLine(editor.getCursor().line);
       const combined = plugin.registry.combinedRegex();
@@ -173,15 +174,15 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
             try {
               const v = await parsed.provider.readKey(parsed.ref);
               await navigator.clipboard.writeText(v);
-              new Notice("Secret copied to clipboard");
+              new Notice(t("notice.secretCopied"));
             } catch (e) {
-              new Notice(`Read failed: ${(e as Error).message}`);
+              new Notice(t("notice.readFailed", { msg: (e as Error).message }));
             }
           })();
           return;
         }
       }
-      new Notice("No placeholder under cursor");
+      new Notice(t("notice.noPlaceholderUnderCursor"));
     },
   });
 }

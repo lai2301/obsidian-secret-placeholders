@@ -5,6 +5,7 @@ import { registerEditorContextMenu } from "./contextMenu";
 import { SecretEditorSuggest } from "./editorSuggest";
 import { buildLivePreviewExtension } from "./livePreview";
 import { PassphraseModal } from "./modals";
+import { t, setLocale } from "./i18n";
 import { buildPostProcessor } from "./postProcessor";
 import { BitwardenProvider } from "./providers/bitwarden";
 import { OpenBaoProvider } from "./providers/openbao";
@@ -37,6 +38,10 @@ export default class SecretPlaceholdersPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadPluginData();
+    // Resolve the UI language before anything user-facing is built (command
+    // names, settings tab, status bar). Command names are registered once, so
+    // a later language change needs a plugin reload to take effect.
+    setLocale(this.data.settings.language);
     this.registry = new ProviderRegistry();
 
     await this.buildRegistry();
@@ -60,7 +65,7 @@ export default class SecretPlaceholdersPlugin extends Plugin {
     });
     this.addCommand({
       id: "secrets-open-index",
-      name: "Secrets: Open placeholder index",
+      name: t("command.openIndex"),
       callback: () => void activateSecretIndexView(this),
     });
 
