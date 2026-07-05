@@ -6,3 +6,6 @@ data.json
 
 # Local-only deploy target (keeps personal vault path out of the repo)
 scripts/.deploy-local
+
+# Local AI assistant guidance, not shipped with the plugin
+CLAUDE.md
