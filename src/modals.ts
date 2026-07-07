@@ -100,7 +100,7 @@ export class RefEditorModal extends Modal {
     app: App,
     private provider: Provider,
     defaults: Record<string, string>,
-    private onSubmit: (parts: Record<string, string> | null) => void,
+    private onSubmit: (parts: Record<string, string> | null) => void | Promise<void>,
   ) {
     super(app);
     this.parts = { ...defaults };
@@ -136,13 +136,13 @@ export class RefEditorModal extends Modal {
             }
             const result = this.parts;
             this.close();
-            this.onSubmit(result);
+            void this.onSubmit(result);
           }),
       )
       .addButton((b) =>
         b.setButtonText(t("button.cancel")).onClick(() => {
           this.close();
-          this.onSubmit(null);
+          void this.onSubmit(null);
         }),
       );
   }

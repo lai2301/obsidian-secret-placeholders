@@ -29,7 +29,7 @@ export function renderSecretSpan(
   provider: Provider,
   ref: ProviderRef,
 ): HTMLElement {
-  const span = document.createElement("span");
+  const span = activeDocument.createSpan();
   span.className = "sp-secret";
   span.dataset.provider = provider.id;
   span.dataset.raw = ref.raw;
@@ -86,11 +86,13 @@ export function renderSecretSpan(
           },
           true,
         );
-        btn.addEventListener("click", async (e) => {
+        btn.addEventListener("click", (e) => {
           e.stopImmediatePropagation();
           e.preventDefault();
-          await provider.auth.login();
-          void load();
+          void (async () => {
+            await provider.auth.login();
+            void load();
+          })();
         });
       });
       return;

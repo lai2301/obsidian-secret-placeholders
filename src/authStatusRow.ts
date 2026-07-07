@@ -69,16 +69,16 @@ export function renderAuthStatusRow(
     if (loggedIn) {
       const btn = right.createEl("button", { text: t("button.logOut") });
       btn.addClass("mod-warning");
-      btn.addEventListener("click", async () => {
-        await provider.auth.logout();
-        new Notice(t("notice.loggedOut", { provider: provider.displayName }));
+      btn.addEventListener("click", () => {
+        void (async () => {
+          await provider.auth.logout();
+          new Notice(t("notice.loggedOut", { provider: provider.displayName }));
+        })();
       });
     } else {
       const btn = right.createEl("button", { text: t("button.logIn") });
       btn.addClass(cls);
-      btn.addEventListener("click", async () => {
-        await provider.auth.login();
-      });
+      btn.addEventListener("click", () => void provider.auth.login());
     }
     for (const action of opts.extraActions ?? []) {
       const visible =
