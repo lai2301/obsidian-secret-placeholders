@@ -115,13 +115,15 @@ export class OpenBaoAuthState {
         this.currentTtl = info.ttl;
         this.notify();
         const delayMs = Math.max(60_000, info.ttl * 800);
-        this.renewTimer = window.setTimeout(async () => {
-          try {
-            await this.client.renewSelf();
-          } catch {
-            /* surface lazily */
-          }
-          this.scheduleRenew();
+        this.renewTimer = window.setTimeout(() => {
+          void (async () => {
+            try {
+              await this.client.renewSelf();
+            } catch {
+              /* surface lazily */
+            }
+            this.scheduleRenew();
+          })();
         }, delayMs);
       } catch {
         /* not a fatal startup error */

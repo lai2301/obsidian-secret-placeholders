@@ -21,7 +21,7 @@ export class BitwardenLoginModal extends Modal {
     app: App,
     private defaultEmail: string,
     private serverUrl: string,
-    private onSubmit: (creds: BitwardenCredentials | null) => void,
+    private onSubmit: (creds: BitwardenCredentials | null) => void | Promise<void>,
   ) {
     super(app);
     this.email = defaultEmail;
@@ -72,7 +72,7 @@ export class BitwardenLoginModal extends Modal {
       .addButton((b) =>
         b.setButtonText(t("button.cancel")).onClick(() => {
           if (this.busy) return;
-          this.onSubmit(null);
+          void this.onSubmit(null);
           this.close();
         }),
       );
@@ -92,7 +92,7 @@ export class BitwardenLoginModal extends Modal {
     // open cleanly without stacking.  Then yield once before invoking the
     // async callback so the DOM detach has a chance to settle.
     this.close();
-    window.setTimeout(() => this.onSubmit(creds), 0);
+    window.setTimeout(() => void this.onSubmit(creds), 0);
   }
 
   onClose(): void {
@@ -145,7 +145,7 @@ export class TwoFactorOtpModal extends Modal {
       .addButton((b) =>
         b.setButtonText(t("button.cancel")).onClick(() => {
           if (this.busy) return;
-          this.onSubmit(null);
+          void this.onSubmit(null);
           this.close();
         }),
       );
@@ -213,7 +213,7 @@ export class NewDeviceOtpModal extends Modal {
       .addButton((b) =>
         b.setButtonText(t("button.cancel")).onClick(() => {
           if (this.busy) return;
-          this.onSubmit(null);
+          void this.onSubmit(null);
           this.close();
         }),
       );

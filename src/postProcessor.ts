@@ -12,8 +12,10 @@ import { renderSecretSpan } from "./secretSpan";
 export function buildPostProcessor(plugin: SecretPlaceholdersPlugin) {
   return (el: HTMLElement, _ctx: MarkdownPostProcessorContext): void => {
     const combined = plugin.registry.combinedRegex();
+    // Use el's own document so nodes are created in the right window (popout compat).
+    const doc = el.ownerDocument;
     // Walk text nodes only; we don't want to recurse into <pre>/<code>.
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => {
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
@@ -32,13 +34,13 @@ export function buildPostProcessor(plugin: SecretPlaceholdersPlugin) {
       if (!combined.test(text)) continue;
       combined.lastIndex = 0;
 
-      const frag = document.createDocumentFragment();
+      const frag = createFragment();
       let lastIdx = 0;
       let m: RegExpExecArray | null;
       while ((m = combined.exec(text)) !== null) {
         if (m.index > lastIdx) {
           frag.appendChild(
-            document.createTextNode(text.slice(lastIdx, m.index)),
+            doc.createTextNode(text.slice(lastIdx, m.index)),
           );
         }
         const parsed = plugin.registry.parseRef(m[0]);
@@ -47,12 +49,12 @@ export function buildPostProcessor(plugin: SecretPlaceholdersPlugin) {
             renderSecretSpan(plugin, parsed.provider, parsed.ref),
           );
         } else {
-          frag.appendChild(document.createTextNode(m[0]));
+          frag.appendChild(doc.createTextNode(m[0]));
         }
         lastIdx = m.index + m[0].length;
       }
       if (lastIdx < text.length) {
-        frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+        frag.appendChild(doc.createTextNode(text.slice(lastIdx)));
       }
       textNode.replaceWith(frag);
     }

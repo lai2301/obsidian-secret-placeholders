@@ -60,7 +60,7 @@ export default class SecretPlaceholdersPlugin extends Plugin {
       VIEW_TYPE_INDEX,
       (leaf) => new SecretIndexView(leaf, this),
     );
-    this.addRibbonIcon("key-round", "Secret Placeholders", () => {
+    this.addRibbonIcon("key-round", "Secret placeholders", () => {
       void activateSecretIndexView(this);
     });
     this.addCommand({
@@ -81,7 +81,7 @@ export default class SecretPlaceholdersPlugin extends Plugin {
       loadProviderData: async <T,>(id: string) =>
         this.data.providers[id] as T | undefined,
       saveProviderData: async <T,>(id: string, p: T) => {
-        this.data.providers[id] = p as unknown;
+        this.data.providers[id] = p;
         await this.savePluginData();
       },
       promptPassphrase: (title) => this.promptPassphrase(title),
@@ -168,7 +168,7 @@ export default class SecretPlaceholdersPlugin extends Plugin {
    *  re-rendered and the elements detach. */
   fireStateChange(reason: "auth" | "settings"): void {
     const event = new CustomEvent("sp-state-change", { detail: { reason } });
-    document.querySelectorAll(".sp-secret").forEach((el) => {
+    activeDocument.querySelectorAll(".sp-secret").forEach((el) => {
       el.dispatchEvent(event);
     });
   }

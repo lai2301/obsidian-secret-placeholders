@@ -95,8 +95,8 @@ async function waitForCallback(
   port: number,
   timeoutSec: number,
 ): Promise<Callback> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const http = (window as unknown as { require: NodeRequire }).require(
+  // Electron desktop only: reach Node's http via window.require for the OIDC loopback server.
+  const http = (window as unknown as { require: NodeJS.Require }).require(
     "http",
   ) as typeof import("http");
 
@@ -124,7 +124,7 @@ async function waitForCallback(
       }
     });
 
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       server.close();
       reject(
         new OidcLoginError(
@@ -132,15 +132,15 @@ async function waitForCallback(
         ),
       );
     }, timeoutSec * 1000);
-    server.on("close", () => clearTimeout(timer));
+    server.on("close", () => window.clearTimeout(timer));
     server.on("error", reject);
     server.listen(port, "127.0.0.1");
   });
 }
 
 async function chooseFreePort(start: number): Promise<number> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const net = (window as unknown as { require: NodeRequire }).require(
+  // Electron desktop only: reach Node's net via window.require to probe for a free loopback port.
+  const net = (window as unknown as { require: NodeJS.Require }).require(
     "net",
   ) as typeof import("net");
 
@@ -166,8 +166,8 @@ function openInBrowser(url: string): void {
   // Obsidian's Electron build registers window.open for external URLs.
   // shell.openExternal is the documented escape hatch.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const electron = (window as unknown as { require: NodeRequire }).require(
+    // Electron desktop only: reach electron.shell via window.require to open the browser for OIDC.
+    const electron = (window as unknown as { require: NodeJS.Require }).require(
       "electron",
     ) as ElectronModule;
     void electron.shell.openExternal(url);
