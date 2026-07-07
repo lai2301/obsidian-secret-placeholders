@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.1
+
+### Changed
+- **Minimum Obsidian version is now 1.7.2** (was 1.5.0). The sidebar index
+  view uses `Workspace.revealLeaf`, which requires 1.7.2.
+
+### Fixed
+- Resolved the community-plugin review scanner findings: popout-window
+  compatibility (`activeDocument`/`ownerDocument`, `window.setTimeout`),
+  correct `void`-handling of promises passed to DOM event listeners and modal
+  callbacks, and removal of a dead import and unused lint directives. No
+  user-facing behavior change.
+
+### Internal
+- Added an ESLint flat config (`typescript-eslint` +
+  `eslint-plugin-obsidianmd`) and an `npm run lint` script.
+
 ## 0.7.0
 
 ### Added

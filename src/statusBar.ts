@@ -55,7 +55,7 @@ export class StatusBar {
         capturedAt: Date.now(),
       });
       this.unsubscribes.push(
-        provider.auth.onChange(() => this.refresh(provider.id)),
+        provider.auth.onChange(() => void this.refresh(provider.id)),
       );
       void this.refresh(provider.id);
     }
@@ -112,12 +112,14 @@ export class StatusBar {
           text: formatTtl(entry.status.ttlSec, entry.capturedAt),
         });
       }
-      chip.addEventListener("click", async () => {
-        if (entry.status.loggedIn) {
-          await entry.provider.auth.logout();
-        } else {
-          await entry.provider.auth.login();
-        }
+      chip.addEventListener("click", () => {
+        void (async () => {
+          if (entry.status.loggedIn) {
+            await entry.provider.auth.logout();
+          } else {
+            await entry.provider.auth.login();
+          }
+        })();
       });
     }
   }

@@ -18,14 +18,14 @@ export class SecretBrowserModal extends FuzzySuggestModal<Entry> {
   constructor(
     app: App,
     private plugin: SecretPlaceholdersPlugin,
-    private onChoose: (entry: Entry) => void,
+    private onChoose: (entry: Entry) => void | Promise<void>,
   ) {
     super(app);
     this.setPlaceholder(t("modal.secretBrowser.searchPlaceholder"));
   }
 
   onOpen(): void {
-    super.onOpen();
+    void super.onOpen();
     void this.load();
   }
 
@@ -54,6 +54,6 @@ export class SecretBrowserModal extends FuzzySuggestModal<Entry> {
   }
 
   onChooseItem(item: Entry): void {
-    this.onChoose(item);
+    void this.onChoose(item);
   }
 }

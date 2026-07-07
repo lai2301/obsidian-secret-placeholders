@@ -232,9 +232,7 @@ export class SecretIndexView extends ItemView {
         for (const use of ref.uses) {
           const useEl = usesEl.createDiv({ cls: "sp-sidebar__use" });
           useEl.setText(`${use.file.path}:${use.line + 1}`);
-          useEl.addEventListener("click", async () => {
-            await this.openAt(use);
-          });
+          useEl.addEventListener("click", () => void this.openAt(use));
         }
       }
     }
@@ -268,5 +266,5 @@ export async function activateSecretIndexView(
     }
     await leaf.setViewState({ type: VIEW_TYPE_INDEX, active: true });
   }
-  workspace.revealLeaf(leaf);
+  void workspace.revealLeaf(leaf);
 }

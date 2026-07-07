@@ -39,7 +39,6 @@ import {
   newDeviceIdentifier,
 } from "./client";
 import {
-  BitwardenCryptoError,
   SymmetricKey,
   decryptBytes,
   decryptString,
