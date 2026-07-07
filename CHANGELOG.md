@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.2
+
+### Fixed
+- **OpenBao OIDC login type safety.** The desktop-only Node interop
+  (`http`/`net`/`electron` via Electron's `require`) is now typed through a
+  small `requireNode<T>` helper with local interfaces instead of relying on
+  ambient `@types/node`, and the `requestUrl(...).json` reads are narrowed
+  explicitly. Clears the community-store review scanner's `no-unsafe-*` and
+  redundant-assertion findings without depending on Node types being present
+  in the scan environment. No user-facing behavior change.
+
 ## 0.7.1
 
 ### Changed
