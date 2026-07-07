@@ -54,7 +54,9 @@ export async function performOidcLogin(
       `auth_url request failed (${authUrlRes.status}): ${authUrlRes.text.slice(0, 200)}`,
     );
   }
-  const authUrl: string | undefined = authUrlRes.json?.data?.auth_url;
+  const authUrl = (
+    authUrlRes.json as { data?: { auth_url?: string } } | undefined
+  )?.data?.auth_url;
   if (!authUrl) {
     throw new OidcLoginError(t("provider.openbao.oidc.noAuthUrl"));
   }
@@ -77,7 +79,9 @@ export async function performOidcLogin(
       `callback failed (${cbRes.status}): ${cbRes.text.slice(0, 200)}`,
     );
   }
-  const token: string | undefined = cbRes.json?.auth?.client_token;
+  const token = (
+    cbRes.json as { auth?: { client_token?: string } } | undefined
+  )?.auth?.client_token;
   if (!token) {
     throw new OidcLoginError(t("provider.openbao.oidc.noClientToken"));
   }
@@ -91,14 +95,43 @@ interface Callback {
   code: string;
 }
 
+// Node interop is desktop-only and reached through Electron's require(). We
+// type require() as returning `unknown` and describe only the narrow surface we
+// use, so these casts stay sound without depending on @types/node resolution.
+function requireNode<T>(id: string): T {
+  const req = (window as unknown as { require: (id: string) => unknown })
+    .require;
+  return req(id) as T;
+}
+
+interface NodeHttpResponse {
+  writeHead(status: number, headers?: Record<string, string>): NodeHttpResponse;
+  end(body?: string): void;
+}
+interface NodeHttpServer {
+  close(): void;
+  on(event: string, listener: (...args: unknown[]) => void): void;
+  listen(port: number, host: string): void;
+}
+interface NodeHttpModule {
+  createServer(
+    handler: (req: { url?: string }, res: NodeHttpResponse) => void,
+  ): NodeHttpServer;
+}
+interface NodeSocketServer {
+  once(event: string, listener: () => void): void;
+  close(callback: () => void): void;
+  listen(port: number, host: string): void;
+}
+interface NodeNetModule {
+  createServer(): NodeSocketServer;
+}
+
 async function waitForCallback(
   port: number,
   timeoutSec: number,
 ): Promise<Callback> {
-  // Electron desktop only: reach Node's http via window.require for the OIDC loopback server.
-  const http = (window as unknown as { require: NodeJS.Require }).require(
-    "http",
-  ) as typeof import("http");
+  const http = requireNode<NodeHttpModule>("http");
 
   return new Promise<Callback>((resolve, reject) => {
     const server = http.createServer((req, res) => {
@@ -139,10 +172,7 @@ async function waitForCallback(
 }
 
 async function chooseFreePort(start: number): Promise<number> {
-  // Electron desktop only: reach Node's net via window.require to probe for a free loopback port.
-  const net = (window as unknown as { require: NodeJS.Require }).require(
-    "net",
-  ) as typeof import("net");
+  const net = requireNode<NodeNetModule>("net");
 
   for (let port = start; port < start + 5; port++) {
     const ok = await new Promise<boolean>((resolve) => {
@@ -166,10 +196,7 @@ function openInBrowser(url: string): void {
   // Obsidian's Electron build registers window.open for external URLs.
   // shell.openExternal is the documented escape hatch.
   try {
-    // Electron desktop only: reach electron.shell via window.require to open the browser for OIDC.
-    const electron = (window as unknown as { require: NodeJS.Require }).require(
-      "electron",
-    ) as ElectronModule;
+    const electron = requireNode<ElectronModule>("electron");
     void electron.shell.openExternal(url);
   } catch {
     window.open(url);
