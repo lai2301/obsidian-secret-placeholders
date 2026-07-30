@@ -29,7 +29,12 @@ export function renderSecretSpan(
   provider: Provider,
   ref: ProviderRef,
 ): HTMLElement {
-  const span = activeDocument.createSpan();
+  // NOTE: use the raw DOM API, not Obsidian's `createSpan()` helper.  The
+  // helper appends the new element to its receiver, and a Document may only
+  // ever have one element child - `activeDocument.createSpan()` throws
+  // "Only one element on document allowed".  We want a detached span created
+  // in the active window's document (popout compat).
+  const span = activeDocument.createElement("span");
   span.className = "sp-secret";
   span.dataset.provider = provider.id;
   span.dataset.raw = ref.raw;
