@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.3
 
 ### Fixed
 - **OpenBao OIDC login port collision.** An abandoned or timed-out login
@@ -15,6 +15,10 @@
   was used so allowlist mismatches are diagnosable. Documented the
   8250-8254 fallback range and its allowlist requirement in
   `docs/providers.md`.
+- **Saving a second secret in a note no longer fails** with "Only one
+  element on document allowed". The secret span is now created detached via
+  the raw DOM API instead of Obsidian's `Node.createSpan()`, which appends
+  to its receiver (merged earlier as #20; first released here).
 
 ## 0.7.2
 
