@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.3
+
+### Fixed
+- **OpenBao OIDC login port collision.** An abandoned or timed-out login
+  attempt kept the loopback listener bound to `127.0.0.1:8250` for up to the
+  full 180s timeout (plus lingering browser keep-alive sockets), so a retry
+  silently fell back to port 8251+. Identity providers that only allow
+  `http://localhost:8250/oidc/callback` as a redirect URI then reject the
+  flow in the browser while the plugin waits out a generic timeout. A new
+  login attempt now cancels the previous one (quietly — no error notice, no
+  paste-token fallback), abort paths destroy lingering sockets so the port
+  frees immediately, and the timeout message includes the redirect URI that
+  was used so allowlist mismatches are diagnosable. Documented the
+  8250-8254 fallback range and its allowlist requirement in
+  `docs/providers.md`.
+- **Saving a second secret in a note no longer fails** with "Only one
+  element on document allowed". The secret span is now created detached via
+  the raw DOM API instead of Obsidian's `Node.createSpan()`, which appends
+  to its receiver (merged earlier as #20; first released here).
+
 ## 0.7.2
 
 ### Fixed

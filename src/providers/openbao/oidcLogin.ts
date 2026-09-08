@@ -29,6 +29,21 @@ export interface OidcLoginResult {
 
 export class OidcLoginError extends Error {}
 
+/** Thrown into a pending login when a newer attempt supersedes it.
+ *  Callers should treat it as "stop quietly", not as a failure. */
+export class OidcLoginCancelledError extends OidcLoginError {}
+
+interface ActiveLogin {
+  cancel(): void;
+}
+
+/** The one in-flight browser login, if any.  A new attempt cancels it first:
+ *  an abandoned attempt would otherwise keep 127.0.0.1:8250 bound for the
+ *  full timeout, pushing the retry onto 8251+ — ports the IdP's redirect-URI
+ *  allowlist typically does not include, which kills the login in the
+ *  browser with an opaque IdP error. */
+let activeLogin: ActiveLogin | null = null;
+
 export async function performOidcLogin(
   opts: OidcLoginOptions,
 ): Promise<OidcLoginResult> {
@@ -38,54 +53,82 @@ export async function performOidcLogin(
     );
   }
 
-  const port = await chooseFreePort(opts.port ?? 8250);
-  const redirectUri = `http://localhost:${port}/oidc/callback`;
+  // Register the supersede guard before the first await: a second click
+  // arriving while this attempt is still probing ports or fetching the
+  // auth_url must cancel it here too, or both flows race for the same port.
+  let listener: CallbackListener | null = null;
+  const attempt = {
+    cancelled: false,
+    cancel: (): void => {
+      attempt.cancelled = true;
+      listener?.cancel();
+    },
+  };
+  activeLogin?.cancel();
+  activeLogin = attempt;
 
-  // 1. Ask OpenBao for the IdP auth URL.
-  const authUrlRes = await requestUrl({
-    url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/auth_url`,
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role: opts.role, redirect_uri: redirectUri }),
-    throw: false,
-  });
-  if (authUrlRes.status >= 400) {
-    throw new OidcLoginError(
-      `auth_url request failed (${authUrlRes.status}): ${authUrlRes.text.slice(0, 200)}`,
-    );
-  }
-  const authUrl = (
-    authUrlRes.json as { data?: { auth_url?: string } } | undefined
-  )?.data?.auth_url;
-  if (!authUrl) {
-    throw new OidcLoginError(t("provider.openbao.oidc.noAuthUrl"));
-  }
+  try {
+    const port = await chooseFreePort(opts.port ?? 8250);
+    if (attempt.cancelled) {
+      throw new OidcLoginCancelledError("login superseded by a new attempt");
+    }
+    const redirectUri = `http://localhost:${port}/oidc/callback`;
 
-  // 2. Set up the loopback listener and 3. open the browser concurrently.
-  const callbackPromise = waitForCallback(port, opts.timeoutSec ?? 180);
-  openInBrowser(authUrl);
+    // 1. Ask OpenBao for the IdP auth URL.
+    const authUrlRes = await requestUrl({
+      url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/auth_url`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: opts.role, redirect_uri: redirectUri }),
+      throw: false,
+    });
+    if (attempt.cancelled) {
+      throw new OidcLoginCancelledError("login superseded by a new attempt");
+    }
+    if (authUrlRes.status >= 400) {
+      throw new OidcLoginError(
+        `auth_url request failed (${authUrlRes.status}): ${authUrlRes.text.slice(0, 200)}`,
+      );
+    }
+    const authUrl = (
+      authUrlRes.json as { data?: { auth_url?: string } } | undefined
+    )?.data?.auth_url;
+    if (!authUrl) {
+      throw new OidcLoginError(t("provider.openbao.oidc.noAuthUrl"));
+    }
 
-  const { state, code } = await callbackPromise;
+    // 2. Set up the loopback listener and 3. open the browser concurrently.
+    listener = startCallbackListener(port, redirectUri, opts.timeoutSec ?? 180);
+    openInBrowser(authUrl);
 
-  // 4. Exchange the code for a Vault token.
-  const params = new URLSearchParams({ state, code });
-  const cbRes = await requestUrl({
-    url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/callback?${params.toString()}`,
-    method: "GET",
-    throw: false,
-  });
-  if (cbRes.status >= 400) {
-    throw new OidcLoginError(
-      `callback failed (${cbRes.status}): ${cbRes.text.slice(0, 200)}`,
-    );
+    const { state, code } = await listener.promise;
+
+    // 4. Exchange the code for a Vault token.
+    const params = new URLSearchParams({ state, code });
+    const cbRes = await requestUrl({
+      url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/callback?${params.toString()}`,
+      method: "GET",
+      throw: false,
+    });
+    if (attempt.cancelled) {
+      // A newer attempt owns the session now; discard this token.
+      throw new OidcLoginCancelledError("login superseded by a new attempt");
+    }
+    if (cbRes.status >= 400) {
+      throw new OidcLoginError(
+        `callback failed (${cbRes.status}): ${cbRes.text.slice(0, 200)}`,
+      );
+    }
+    const token = (
+      cbRes.json as { auth?: { client_token?: string } } | undefined
+    )?.auth?.client_token;
+    if (!token) {
+      throw new OidcLoginError(t("provider.openbao.oidc.noClientToken"));
+    }
+    return { token };
+  } finally {
+    if (activeLogin === attempt) activeLogin = null;
   }
-  const token = (
-    cbRes.json as { auth?: { client_token?: string } } | undefined
-  )?.auth?.client_token;
-  if (!token) {
-    throw new OidcLoginError(t("provider.openbao.oidc.noClientToken"));
-  }
-  return { token };
 }
 
 // --- Node-only helpers (loaded lazily so the bundle stays mobile-safe) ----
@@ -113,6 +156,10 @@ interface NodeHttpServer {
   on(event: string, listener: (...args: unknown[]) => void): void;
   listen(port: number, host: string): void;
 }
+interface NodeSocket {
+  destroy(): void;
+  on(event: string, listener: (...args: unknown[]) => void): void;
+}
 interface NodeHttpModule {
   createServer(
     handler: (req: { url?: string }, res: NodeHttpResponse) => void,
@@ -127,13 +174,23 @@ interface NodeNetModule {
   createServer(): NodeSocketServer;
 }
 
-async function waitForCallback(
+interface CallbackListener extends ActiveLogin {
+  promise: Promise<Callback>;
+}
+
+function startCallbackListener(
   port: number,
+  redirectUri: string,
   timeoutSec: number,
-): Promise<Callback> {
+): CallbackListener {
   const http = requireNode<NodeHttpModule>("http");
 
-  return new Promise<Callback>((resolve, reject) => {
+  let cancel: () => void = () => {};
+  const promise = new Promise<Callback>((resolve, reject) => {
+    // Browsers open speculative keep-alive connections; server.close() alone
+    // leaves those holding the port. Track sockets so abort paths (timeout,
+    // cancel) can free 127.0.0.1:<port> immediately for the next attempt.
+    const sockets = new Set<NodeSocket>();
     const server = http.createServer((req, res) => {
       if (!req.url || !req.url.startsWith("/oidc/callback")) {
         res.writeHead(404).end();
@@ -143,7 +200,10 @@ async function waitForCallback(
       const state = url.searchParams.get("state");
       const code = url.searchParams.get("code");
 
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        Connection: "close",
+      });
       if (state && code) {
         res.end(SUCCESS_HTML);
         server.close();
@@ -156,19 +216,47 @@ async function waitForCallback(
         );
       }
     });
+    server.on("connection", (...args) => {
+      const socket = args[0] as NodeSocket;
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+    });
+
+    const abort = (err: Error) => {
+      server.close();
+      for (const socket of sockets) socket.destroy();
+      sockets.clear();
+      reject(err);
+    };
 
     const timer = window.setTimeout(() => {
-      server.close();
-      reject(
+      abort(
         new OidcLoginError(
-          t("provider.openbao.oidc.timeout", { sec: timeoutSec }),
+          // The redirect URI is the usual culprit when the browser flow never
+          // comes back: an IdP whose allowlist stops at the first port
+          // rejects fallback ports before ever redirecting here.
+          `${t("provider.openbao.oidc.timeout", { sec: timeoutSec })} (redirect_uri: ${redirectUri})`,
         ),
       );
     }, timeoutSec * 1000);
     server.on("close", () => window.clearTimeout(timer));
-    server.on("error", reject);
+    // A server that never reaches listening never emits "close", so clear
+    // the timeout here as well or a failed bind leaks a 180s timer.
+    server.on("error", (...args) => {
+      window.clearTimeout(timer);
+      reject(
+        args[0] instanceof Error
+          ? args[0]
+          : new OidcLoginError(String(args[0])),
+      );
+    });
     server.listen(port, "127.0.0.1");
+
+    cancel = () =>
+      abort(new OidcLoginCancelledError("login superseded by a new attempt"));
   });
+
+  return { promise, cancel };
 }
 
 async function chooseFreePort(start: number): Promise<number> {
