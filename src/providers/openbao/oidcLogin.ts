@@ -53,68 +53,82 @@ export async function performOidcLogin(
     );
   }
 
+  // Register the supersede guard before the first await: a second click
+  // arriving while this attempt is still probing ports or fetching the
+  // auth_url must cancel it here too, or both flows race for the same port.
+  let listener: CallbackListener | null = null;
+  const attempt = {
+    cancelled: false,
+    cancel: (): void => {
+      attempt.cancelled = true;
+      listener?.cancel();
+    },
+  };
   activeLogin?.cancel();
-  activeLogin = null;
+  activeLogin = attempt;
 
-  const port = await chooseFreePort(opts.port ?? 8250);
-  const redirectUri = `http://localhost:${port}/oidc/callback`;
-
-  // 1. Ask OpenBao for the IdP auth URL.
-  const authUrlRes = await requestUrl({
-    url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/auth_url`,
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ role: opts.role, redirect_uri: redirectUri }),
-    throw: false,
-  });
-  if (authUrlRes.status >= 400) {
-    throw new OidcLoginError(
-      `auth_url request failed (${authUrlRes.status}): ${authUrlRes.text.slice(0, 200)}`,
-    );
-  }
-  const authUrl = (
-    authUrlRes.json as { data?: { auth_url?: string } } | undefined
-  )?.data?.auth_url;
-  if (!authUrl) {
-    throw new OidcLoginError(t("provider.openbao.oidc.noAuthUrl"));
-  }
-
-  // 2. Set up the loopback listener and 3. open the browser concurrently.
-  const listener = startCallbackListener(
-    port,
-    redirectUri,
-    opts.timeoutSec ?? 180,
-  );
-  activeLogin = listener;
-  openInBrowser(authUrl);
-
-  let state: string;
-  let code: string;
   try {
-    ({ state, code } = await listener.promise);
-  } finally {
-    if (activeLogin === listener) activeLogin = null;
-  }
+    const port = await chooseFreePort(opts.port ?? 8250);
+    if (attempt.cancelled) {
+      throw new OidcLoginCancelledError("login superseded by a new attempt");
+    }
+    const redirectUri = `http://localhost:${port}/oidc/callback`;
 
-  // 4. Exchange the code for a Vault token.
-  const params = new URLSearchParams({ state, code });
-  const cbRes = await requestUrl({
-    url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/callback?${params.toString()}`,
-    method: "GET",
-    throw: false,
-  });
-  if (cbRes.status >= 400) {
-    throw new OidcLoginError(
-      `callback failed (${cbRes.status}): ${cbRes.text.slice(0, 200)}`,
-    );
+    // 1. Ask OpenBao for the IdP auth URL.
+    const authUrlRes = await requestUrl({
+      url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/auth_url`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: opts.role, redirect_uri: redirectUri }),
+      throw: false,
+    });
+    if (attempt.cancelled) {
+      throw new OidcLoginCancelledError("login superseded by a new attempt");
+    }
+    if (authUrlRes.status >= 400) {
+      throw new OidcLoginError(
+        `auth_url request failed (${authUrlRes.status}): ${authUrlRes.text.slice(0, 200)}`,
+      );
+    }
+    const authUrl = (
+      authUrlRes.json as { data?: { auth_url?: string } } | undefined
+    )?.data?.auth_url;
+    if (!authUrl) {
+      throw new OidcLoginError(t("provider.openbao.oidc.noAuthUrl"));
+    }
+
+    // 2. Set up the loopback listener and 3. open the browser concurrently.
+    listener = startCallbackListener(port, redirectUri, opts.timeoutSec ?? 180);
+    openInBrowser(authUrl);
+
+    const { state, code } = await listener.promise;
+
+    // 4. Exchange the code for a Vault token.
+    const params = new URLSearchParams({ state, code });
+    const cbRes = await requestUrl({
+      url: `${opts.baseUrl.replace(/\/+$/, "")}/v1/auth/oidc/oidc/callback?${params.toString()}`,
+      method: "GET",
+      throw: false,
+    });
+    if (attempt.cancelled) {
+      // A newer attempt owns the session now; discard this token.
+      throw new OidcLoginCancelledError("login superseded by a new attempt");
+    }
+    if (cbRes.status >= 400) {
+      throw new OidcLoginError(
+        `callback failed (${cbRes.status}): ${cbRes.text.slice(0, 200)}`,
+      );
+    }
+    const token = (
+      cbRes.json as { auth?: { client_token?: string } } | undefined
+    )?.auth?.client_token;
+    if (!token) {
+      throw new OidcLoginError(t("provider.openbao.oidc.noClientToken"));
+    }
+    return { token };
+  } finally {
+    if (activeLogin === attempt) activeLogin = null;
   }
-  const token = (
-    cbRes.json as { auth?: { client_token?: string } } | undefined
-  )?.auth?.client_token;
-  if (!token) {
-    throw new OidcLoginError(t("provider.openbao.oidc.noClientToken"));
-  }
-  return { token };
 }
 
 // --- Node-only helpers (loaded lazily so the bundle stays mobile-safe) ----
@@ -226,7 +240,16 @@ function startCallbackListener(
       );
     }, timeoutSec * 1000);
     server.on("close", () => window.clearTimeout(timer));
-    server.on("error", reject);
+    // A server that never reaches listening never emits "close", so clear
+    // the timeout here as well or a failed bind leaks a 180s timer.
+    server.on("error", (...args) => {
+      window.clearTimeout(timer);
+      reject(
+        args[0] instanceof Error
+          ? args[0]
+          : new OidcLoginError(String(args[0])),
+      );
+    });
     server.listen(port, "127.0.0.1");
 
     cancel = () =>
