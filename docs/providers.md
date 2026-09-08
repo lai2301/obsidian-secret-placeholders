@@ -31,7 +31,13 @@ The plugin uses the **KV v2** secrets engine.
 - **Desktop** — click *Log in*. The plugin opens your identity provider
   in the system browser, captures the callback on `127.0.0.1`, and
   exchanges it for a Vault token. This is the same loopback flow the
-  `bao`/`vault` CLI uses.
+  `bao`/`vault` CLI uses. The listener binds port **8250**, falling back
+  through **8251-8254** if a port is taken — both the OIDC auth role's
+  `allowed_redirect_uris` **and your identity provider's redirect-URI
+  allowlist** must include `http://localhost:<port>/oidc/callback` for
+  every port you want usable; an IdP that only allows 8250 will reject
+  the fallback ports in the browser before the plugin ever sees the
+  callback.
 - **Mobile**, or as a fallback — click *Paste token* and paste a token
   obtained from `bao login` or the Vault web UI.
 

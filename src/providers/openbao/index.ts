@@ -14,7 +14,11 @@ import {
 import { renderAuthStatusRow } from "../../authStatusRow";
 import { BaoError, OpenBaoClient } from "./client";
 import { OpenBaoAuthState, PersistedAuth } from "./auth";
-import { OidcLoginError, performOidcLogin } from "./oidcLogin";
+import {
+  OidcLoginCancelledError,
+  OidcLoginError,
+  performOidcLogin,
+} from "./oidcLogin";
 
 export interface OpenBaoSettings extends PersistedAuth {
   baseUrl: string;
@@ -114,6 +118,10 @@ export class OpenBaoProvider implements Provider {
             this.ctx.notifyAuthChanged(this.id);
             return;
           } catch (e) {
+            if (e instanceof OidcLoginCancelledError) {
+              // A newer login attempt took over; this one just goes away.
+              return;
+            }
             if (e instanceof OidcLoginError) {
               new Notice(t("provider.openbao.oidcLoginFailed", { msg: e.message }));
             } else {

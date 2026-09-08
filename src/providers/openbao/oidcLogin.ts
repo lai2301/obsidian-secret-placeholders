@@ -29,6 +29,21 @@ export interface OidcLoginResult {
 
 export class OidcLoginError extends Error {}
 
+/** Thrown into a pending login when a newer attempt supersedes it.
+ *  Callers should treat it as "stop quietly", not as a failure. */
+export class OidcLoginCancelledError extends OidcLoginError {}
+
+interface ActiveLogin {
+  cancel(): void;
+}
+
+/** The one in-flight browser login, if any.  A new attempt cancels it first:
+ *  an abandoned attempt would otherwise keep 127.0.0.1:8250 bound for the
+ *  full timeout, pushing the retry onto 8251+ — ports the IdP's redirect-URI
+ *  allowlist typically does not include, which kills the login in the
+ *  browser with an opaque IdP error. */
+let activeLogin: ActiveLogin | null = null;
+
 export async function performOidcLogin(
   opts: OidcLoginOptions,
 ): Promise<OidcLoginResult> {
@@ -37,6 +52,9 @@ export async function performOidcLogin(
       "OIDC browser login is desktop-only; paste a token instead.",
     );
   }
+
+  activeLogin?.cancel();
+  activeLogin = null;
 
   const port = await chooseFreePort(opts.port ?? 8250);
   const redirectUri = `http://localhost:${port}/oidc/callback`;
@@ -62,10 +80,21 @@ export async function performOidcLogin(
   }
 
   // 2. Set up the loopback listener and 3. open the browser concurrently.
-  const callbackPromise = waitForCallback(port, opts.timeoutSec ?? 180);
+  const listener = startCallbackListener(
+    port,
+    redirectUri,
+    opts.timeoutSec ?? 180,
+  );
+  activeLogin = listener;
   openInBrowser(authUrl);
 
-  const { state, code } = await callbackPromise;
+  let state: string;
+  let code: string;
+  try {
+    ({ state, code } = await listener.promise);
+  } finally {
+    if (activeLogin === listener) activeLogin = null;
+  }
 
   // 4. Exchange the code for a Vault token.
   const params = new URLSearchParams({ state, code });
@@ -113,6 +142,10 @@ interface NodeHttpServer {
   on(event: string, listener: (...args: unknown[]) => void): void;
   listen(port: number, host: string): void;
 }
+interface NodeSocket {
+  destroy(): void;
+  on(event: string, listener: (...args: unknown[]) => void): void;
+}
 interface NodeHttpModule {
   createServer(
     handler: (req: { url?: string }, res: NodeHttpResponse) => void,
@@ -127,13 +160,23 @@ interface NodeNetModule {
   createServer(): NodeSocketServer;
 }
 
-async function waitForCallback(
+interface CallbackListener extends ActiveLogin {
+  promise: Promise<Callback>;
+}
+
+function startCallbackListener(
   port: number,
+  redirectUri: string,
   timeoutSec: number,
-): Promise<Callback> {
+): CallbackListener {
   const http = requireNode<NodeHttpModule>("http");
 
-  return new Promise<Callback>((resolve, reject) => {
+  let cancel: () => void = () => {};
+  const promise = new Promise<Callback>((resolve, reject) => {
+    // Browsers open speculative keep-alive connections; server.close() alone
+    // leaves those holding the port. Track sockets so abort paths (timeout,
+    // cancel) can free 127.0.0.1:<port> immediately for the next attempt.
+    const sockets = new Set<NodeSocket>();
     const server = http.createServer((req, res) => {
       if (!req.url || !req.url.startsWith("/oidc/callback")) {
         res.writeHead(404).end();
@@ -143,7 +186,10 @@ async function waitForCallback(
       const state = url.searchParams.get("state");
       const code = url.searchParams.get("code");
 
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        Connection: "close",
+      });
       if (state && code) {
         res.end(SUCCESS_HTML);
         server.close();
@@ -156,19 +202,38 @@ async function waitForCallback(
         );
       }
     });
+    server.on("connection", (...args) => {
+      const socket = args[0] as NodeSocket;
+      sockets.add(socket);
+      socket.on("close", () => sockets.delete(socket));
+    });
+
+    const abort = (err: Error) => {
+      server.close();
+      for (const socket of sockets) socket.destroy();
+      sockets.clear();
+      reject(err);
+    };
 
     const timer = window.setTimeout(() => {
-      server.close();
-      reject(
+      abort(
         new OidcLoginError(
-          t("provider.openbao.oidc.timeout", { sec: timeoutSec }),
+          // The redirect URI is the usual culprit when the browser flow never
+          // comes back: an IdP whose allowlist stops at the first port
+          // rejects fallback ports before ever redirecting here.
+          `${t("provider.openbao.oidc.timeout", { sec: timeoutSec })} (redirect_uri: ${redirectUri})`,
         ),
       );
     }, timeoutSec * 1000);
     server.on("close", () => window.clearTimeout(timer));
     server.on("error", reject);
     server.listen(port, "127.0.0.1");
+
+    cancel = () =>
+      abort(new OidcLoginCancelledError("login superseded by a new attempt"));
   });
+
+  return { promise, cancel };
 }
 
 async function chooseFreePort(start: number): Promise<number> {
