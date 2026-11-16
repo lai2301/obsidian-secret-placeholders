@@ -135,24 +135,29 @@ function firstLine(stderr: string): string {
   return line.trim().slice(0, 200);
 }
 
+function matchesAny(patterns: RegExp[], s: string): boolean {
+  return patterns.some((p) => p.test(s));
+}
+
 function classifyStderr(stderr: string): ProtonPassError {
-  const detail = firstLine(stderr) || "pass-cli failed";
-  if (AUTH_PATTERNS.some((p) => p.test(stderr))) {
+  if (matchesAny(AUTH_PATTERNS, stderr)) {
     return new ProtonPassError("not-logged-in", t("provider.protonpass.notLoggedIn"));
   }
-  if (NOT_FOUND_PATTERNS.some((p) => p.test(stderr))) {
+  if (matchesAny(NOT_FOUND_PATTERNS, stderr)) {
     // The useful line ("Could not find item ...") is the last cause, not
     // the first line.
     const cause =
-      stderr.split(/\r?\n/).reverse().find((l) => NOT_FOUND_PATTERNS.some((p) => p.test(l))) ??
-      detail;
+      stderr
+        .split(/\r?\n/)
+        .reverse()
+        .find((l) => matchesAny(NOT_FOUND_PATTERNS, l)) ?? stderr;
     return new ProtonPassError("not-found", firstLine(cause.replace(/^\s*\d+:\s*/, "")));
   }
-  return new ProtonPassError("unknown", detail);
+  return new ProtonPassError("unknown", firstLine(stderr) || "pass-cli failed");
 }
 
 class PassCli {
-  constructor(private getBinaryPath: () => string) { }
+  constructor(private getBinaryPath: () => string) {}
 
   /** Run pass-cli with argv and resolve to stdout.  Rejects with a
    *  ProtonPassError whose message never contains stdout. */
@@ -404,10 +409,9 @@ export class ProtonPassProvider implements Provider {
   async list(): Promise<ProviderRef[]> {
     const vaults = await this.listVaults();
     const wanted = this.settings.defaultVault.trim();
+    const candidates = wanted ? vaults.filter((v) => v === wanted) : vaults;
     // A leading "-" would be read as a flag by pass-cli.
-    const targets = (wanted ? vaults.filter((v) => v === wanted) : vaults).filter(
-      (v) => !v.startsWith("-"),
-    );
+    const targets = candidates.filter((v) => !v.startsWith("-"));
     const out: ProviderRef[] = [];
     for (const vault of targets) {
       const titles = await this.listItems(vault).catch(() => [] as string[]);
