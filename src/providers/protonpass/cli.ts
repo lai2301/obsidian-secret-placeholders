@@ -98,7 +98,7 @@ const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   } else if (typeof e.code === "number") {
     return classifyStderr(e.stderr ?? "");
   } else {
-    return new ProtonPassError("unknown", `pass-cli failed (${String(e.code ?? e.signal ?? "no exit code")})`);
+    return new ProtonPassError("unknown", `pass-cli failed (${e.code ?? e.signal ?? "no exit code"})`);
   }
 };
 

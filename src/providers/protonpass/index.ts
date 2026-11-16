@@ -35,6 +35,7 @@ import {
 import { ProtonPassError, errorMessage } from "./errors";
 import {
   PLACEHOLDER_RE,
+  PassRefParts,
   PREFIX,
   formatPlaceholder,
   fromRecord,
@@ -53,6 +54,20 @@ const slugify = (s: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
+
+/**
+ * The `pass://` reference for `parts`.
+ *
+ * @throws {ProtonPassError} "not-found" if the parts can't form a valid reference.
+ */
+const requirePassRef = (parts: PassRefParts): string => {
+  const passRef = toPassRef(parts);
+  if (!passRef) {
+    throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
+  }
+
+  return passRef;
+};
 
 export class ProtonPassProvider implements Provider {
   readonly id = "pp";
@@ -173,10 +188,7 @@ export class ProtonPassProvider implements Provider {
   }
 
   async readKey(ref: ProviderRef): Promise<string> {
-    const passRef = toPassRef(fromRecord(ref.parts));
-    if (!passRef) {
-      throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
-    }
+    const passRef = requirePassRef(fromRecord(ref.parts));
     return this.#cached(`view:${passRef}`, () =>
       repo.readSecret(this.#settings.binaryPath, passRef),
     );
@@ -185,11 +197,7 @@ export class ProtonPassProvider implements Provider {
   /** Set the secret at `ref` to `value`, creating the item if needed. */
   async writeKey(ref: ProviderRef, value: string): Promise<void> {
     const parts = fromRecord(ref.parts);
-    const passRef = toPassRef(parts);
-    if (!passRef) {
-      throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
-    }
-
+    const passRef = requirePassRef(parts);
     await repo.upsertField(this.#settings.binaryPath, parts, value);
     this.#cache.delete(`view:${passRef}`);
     this.#cache.delete(`items:${parts.vault}`);

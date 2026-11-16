@@ -41,19 +41,11 @@ export const listItemTitles = async (bin: string, vault: string): Promise<string
   return itemTitles(parseJson(stdout));
 };
 
-/**
- * Create a note item titled `title` in `vault` whose text is `note` (empty by
- * default), and resolve to the new item's share ID.
- */
-export const createNote = async (
-  bin: string,
-  vault: string,
-  title: string,
-  note = "",
-): Promise<string> => {
+/** Create an empty note item titled `title` in `vault`, and resolve to its share ID. */
+export const createEmptyNote = async (bin: string, vault: string, title: string): Promise<string> => {
   const stdout = await runPassCli(
     bin,
-    ["item", "create", "note", `--vault-name=${vault}`, `--title=${title}`, `--note=${note}`],
+    ["item", "create", "note", `--vault-name=${vault}`, `--title=${title}`, "--note="],
     VIEW_MAX_BUFFER,
   );
   return stdout.trim();
@@ -104,7 +96,7 @@ export const upsertField = async (
 ): Promise<void> => {
   const titles = await listItemTitles(bin, parts.vault);
   if (!titles.includes(parts.item)) {
-    await createNote(bin, parts.vault, parts.item);
+    await createEmptyNote(bin, parts.vault, parts.item);
   }
 
   await updateField(bin, parts, value);
