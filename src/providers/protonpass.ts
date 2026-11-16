@@ -157,7 +157,7 @@ function classifyStderr(stderr: string): ProtonPassError {
 }
 
 class PassCli {
-  constructor(private getBinaryPath: () => string) {}
+  constructor(private getBinaryPath: () => string) { }
 
   /** Run pass-cli with argv and resolve to stdout.  Rejects with a
    *  ProtonPassError whose message never contains stdout. */
@@ -362,18 +362,25 @@ export class ProtonPassProvider implements Provider {
     return `{{pp:${vault}/${item}/${field}}}`;
   }
 
-  /** Cached by key; a rejected promise is evicted so a retry asks again. */
+  /** Cached by key. A rejected promise is evicted so a retry asks again. */
   private cached(key: string, load: () => Promise<string>): Promise<string> {
     const now = Date.now();
     const hit = this.cache.get(key);
-    if (hit && hit.expires > now) return hit.value;
-    const value = load();
-    const entry = { expires: now + this.settings.cacheTtlSec * 1000, value };
-    this.cache.set(key, entry);
-    value.catch(() => {
-      if (this.cache.get(key) === entry) this.cache.delete(key);
-    });
-    return value;
+
+    if (hit && hit.expires > now) {
+      return hit.value;
+    } else {
+      const value = load();
+      const entry = { expires: now + this.settings.cacheTtlSec * 1000, value };
+
+      this.cache.set(key, entry);
+      value.catch(() => {
+        if (this.cache.get(key) === entry) {
+          this.cache.delete(key);
+        }
+      });
+      return value;
+    }
   }
 
   async readKey(ref: ProviderRef): Promise<string> {
