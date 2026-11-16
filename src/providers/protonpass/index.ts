@@ -3,8 +3,8 @@
  * owns the session (login happens in a terminal with `pass-cli login`).
  * Desktop only, because spawning a process needs Node's `child_process`.
  *
- * Placeholder syntax is `{{pp:<vault>/<item>/<field>}}`:
- * - It maps 1:1 onto pass-cli's secret reference `pass://<vault>/<item>/<field>`.
+ * Placeholder syntax is `{{pp:<vault>/<item>#<field>}}`:
+ * - It maps onto pass-cli's secret reference `pass://<vault>/<item>/<field>`.
  * - `<vault>` is the vault name, `<item>` the item title and `<field>` the
  *   field name (e.g. "password", "username", "email" or a custom field).
  *

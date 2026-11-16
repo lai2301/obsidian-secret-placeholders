@@ -4,7 +4,7 @@
 
 ### Added
 - **Proton Pass provider (desktop only).** Placeholders of the form
-  `{{pp:<vault>/<item>/<field>}}` resolve through the official
+  `{{pp:<vault>/<item>#<field>}}` resolve through the official
   [Proton Pass CLI](https://protonpass.github.io/pass-cli/) (`pass-cli`),
   which owns the session. Log in with `pass-cli login` in a terminal and set
   the binary's absolute path in the provider settings. Secrets can be read,

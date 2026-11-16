@@ -1,5 +1,5 @@
 /**
- * Placeholder grammar, `{{pp:<vault>/<item>/<field>}}`, and its mapping onto
+ * Placeholder grammar, `{{pp:<vault>/<item>#<field>}}`, and its mapping onto
  * pass-cli's `pass://<vault>/<item>/<field>` secret URI references.
  */
 
@@ -13,14 +13,22 @@ export const PREFIX = "pp:";
 export type PassRefParts = { vault: string; item: string; field: string };
 
 /**
- * Matches `{{pp:<vault>/<item>/<field>}}`. `/` separates segments, so it
- * can't appear inside one. `{` and `}` are forbidden so the closing braces
- * still terminate the match.
+ * Characters no segment may hold. `/` and `#` separate segments, and `/`
+ * also separates them in the `pass://` reference. `{` and `}` are forbidden
+ * so the closing braces still terminate a placeholder.
  */
+const RESERVED = "/#{}";
+
+/** One segment: a nonempty run of anything but {@link RESERVED}. */
+const SEGMENT = `[^${RESERVED}]+`;
+
+/** Matches `{{pp:<vault>/<item>#<field>}}`, the same shape as the other providers. */
 export const PLACEHOLDER_RE = new RegExp(
-  String.raw`\{\{${PREFIX}(?<vault>[^/{}]+)/(?<item>[^/{}]+)/(?<field>[^/{}]+)\}\}`,
+  String.raw`\{\{${PREFIX}(?<vault>${SEGMENT})/(?<item>${SEGMENT})#(?<field>${SEGMENT})\}\}`,
   "g",
 );
+
+const RESERVED_RE = new RegExp(`[${RESERVED}]`);
 
 /** True if `s` holds a Unicode "Cc" character: C0 controls, DEL or C1 controls (U+0080–U+009F). */
 const hasControlChars = (s: string): boolean => /\p{Cc}/u.test(s);
@@ -39,14 +47,14 @@ export const fromRecord = (parts: Record<string, string>): PassRefParts => ({
  * Build the `pass://` reference for `parts`, or null if it isn't safe to
  * hand to pass-cli.
  *
- * Every segment must be nonempty and free of control characters. Segments
- * also can't hold `/`, `{` or `}`, matching {@link PLACEHOLDER_RE}, so a ref
+ * Every segment must be nonempty and free of control characters and
+ * {@link RESERVED} characters, matching {@link PLACEHOLDER_RE}. So a ref
  * built here always round-trips through {@link formatPlaceholder} and
  * {@link parsePlaceholder}.
  */
 export const toPassRef = (parts: PassRefParts): string | null => {
   const segments = [parts.vault, parts.item, parts.field];
-  if (segments.some((s) => !s || /[/{}]/.test(s) || hasControlChars(s))) {
+  if (segments.some((s) => !s || RESERVED_RE.test(s) || hasControlChars(s))) {
     return null;
   }
 
@@ -55,7 +63,7 @@ export const toPassRef = (parts: PassRefParts): string | null => {
 
 /** Render `parts` as a `{{pp:...}}` placeholder. */
 export const formatPlaceholder = ({ vault, item, field }: PassRefParts): string =>
-  `{{${PREFIX}${vault}/${item}/${field}}}`;
+  `{{${PREFIX}${vault}/${item}#${field}}}`;
 
 /**
  * Parse the first placeholder in `raw`. Returns null if there is none or

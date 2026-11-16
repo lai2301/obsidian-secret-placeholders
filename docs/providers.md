@@ -154,7 +154,7 @@ depends on the provider.
 | OpenBao | `{{bao:<mount>/<path>#<key>}}` | `{{bao:kv/obsidian/github#token}}` |
 | 1Password | `{{1p:<vault>/<item>#<field>}}` | `{{1p:Personal/GitHub#password}}` |
 | Bitwarden | `{{vw:[<folder>/]<item>#<field>}}` | `{{vw:Work/CI#password}}` or `{{vw:GitHub#password}}` |
-| Proton Pass | `{{pp:<vault>/<item>/<field>}}` | `{{pp:Personal/GitHub/password}}` |
+| Proton Pass | `{{pp:<vault>/<item>#<field>}}` | `{{pp:Personal/GitHub#password}}` |
 
 Notes:
 
@@ -167,5 +167,5 @@ Notes:
 - A `/` inside an item title breaks the syntax (the first `/` is the
   folder separator). Rename the item, or reference it by its provider
   UUID instead of its name.
-- Proton Pass references map 1:1 onto `pass://<vault>/<item>/<field>`, so
-  no segment may contain `/`.
+- Proton Pass references map onto `pass://<vault>/<item>/<field>`, so no
+  segment may contain `/` or `#`.
