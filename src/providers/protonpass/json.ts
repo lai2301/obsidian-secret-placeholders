@@ -1,7 +1,7 @@
 // Parsers for pass-cli's `--output json` listings.  The shapes are assumed
 // stable; anything else throws rather than guessing.
 
-import { ProtonPassError } from "./cli";
+import { ProtonPassError } from "./errors";
 
 type Json = Record<string, unknown>;
 

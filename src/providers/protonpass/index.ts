@@ -28,9 +28,17 @@ import {
   ProviderAuthStatus,
   ProviderRef,
 } from "../types";
-import { ProtonPassError, runPassCli } from "./cli";
+import { runPassCli } from "./cli";
+import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
-import { PLACEHOLDER_RE, toPassRef } from "./ref";
+import {
+  PLACEHOLDER_RE,
+  PREFIX,
+  formatPlaceholder,
+  fromRecord,
+  parsePlaceholder,
+  toPassRef,
+} from "./ref";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
 // `item view` prints one field; `item list` prints whole items as JSON.
@@ -49,7 +57,7 @@ const slugify = (s: string): string => {
 export class ProtonPassProvider implements Provider {
   readonly id = "pp";
   readonly displayName = "Proton Pass";
-  readonly placeholderPrefix = "pass:";
+  readonly placeholderPrefix = PREFIX;
   readonly placeholderRegex = PLACEHOLDER_RE;
   readonly readOnly = true;
 
@@ -124,19 +132,12 @@ export class ProtonPassProvider implements Provider {
   }
 
   parseRef(raw: string): ProviderRef | null {
-    const m = new RegExp(PLACEHOLDER_RE.source).exec(raw);
-    if (!m) return null;
-    const parts = { vault: m[1], item: m[2], field: m[3] };
-    if (toPassRef(parts)) {
-      return { provider: this.id, raw: m[0], parts };
-    } else {
-      return null;
-    }
+    const parsed = parsePlaceholder(raw);
+    return parsed ? { provider: this.id, ...parsed } : null;
   }
 
   formatRef(parts: Record<string, string>): string {
-    const { vault, item, field } = parts;
-    return `{{pass:${vault}/${item}/${field}}}`;
+    return formatPlaceholder(fromRecord(parts));
   }
 
   /** Cached by key. A rejected promise is evicted so a retry asks again,
@@ -162,7 +163,7 @@ export class ProtonPassProvider implements Provider {
   }
 
   async readKey(ref: ProviderRef): Promise<string> {
-    const passRef = toPassRef(ref.parts);
+    const passRef = toPassRef(fromRecord(ref.parts));
     if (!passRef) {
       throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
     }
@@ -210,7 +211,7 @@ export class ProtonPassProvider implements Provider {
       .flat()
       .filter((parts) => toPassRef(parts) !== null)
       .slice(0, MAX_LIST_ITEMS)
-      .map((parts) => ({ provider: this.id, raw: this.formatRef(parts), parts }));
+      .map((parts) => ({ provider: this.id, raw: formatPlaceholder(parts), parts }));
   }
 
   clearCache(): void {
