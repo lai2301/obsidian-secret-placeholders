@@ -6,6 +6,7 @@
 import { Platform } from "obsidian";
 
 import { t } from "../../i18n";
+import { requireNode } from "../../node";
 import { ProtonPassError, errorMessage } from "./errors";
 
 const TIMEOUT_MS = 10_000;
@@ -53,17 +54,6 @@ interface NodeChildProcessModule {
 interface NodeUtilModule {
   promisify: (execFile: NodeChildProcessModule["execFile"]) => ExecFileAsync;
 }
-
-/**
- * Load a Node built-in through Electron's `require()`. Built-ins are external
- * to the bundle, so a static import would load at plugin start and break on
- * mobile.
- */
-const requireNode = <T>(id: string): T => {
-  const req = (window as unknown as { require: (id: string) => unknown })
-    .require;
-  return req(id) as T;
-};
 
 /**
  * Promisified `child_process.execFile`, loaded on first use.
