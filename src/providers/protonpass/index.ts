@@ -46,13 +46,12 @@ const VIEW_MAX_BUFFER = 64 * 1024;
 const LIST_MAX_BUFFER = 8 * 1024 * 1024;
 const MAX_LIST_ITEMS = 500;
 
-const slugify = (s: string): string => {
-  return s
+const slugify = (s: string): string =>
+  s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-};
 
 export class ProtonPassProvider implements Provider {
   readonly id = "pp";
@@ -61,58 +60,59 @@ export class ProtonPassProvider implements Provider {
   readonly placeholderRegex = PLACEHOLDER_RE;
   readonly readOnly = true;
 
-  private settings: ProtonPassSettings = { ...DEFAULTS };
+  readonly #ctx: PluginContext;
+  #settings: ProtonPassSettings = { ...DEFAULTS };
   // Holds lookups, not values, so concurrent reads of one ref share a
   // single pass-cli call. Failures are dropped once they settle. Each key
   // prefix ("view:", "vaults", "items:") always stores the same result type.
-  private cache = new Map<string, { expires: number; value: Promise<unknown> }>();
-  auth: ProviderAuth;
+  readonly #cache = new Map<string, { expires: number; value: Promise<unknown> }>();
+  readonly #listeners = new Set<() => void>();
 
-  private listeners = new Set<() => void>();
+  readonly auth: ProviderAuth = {
+    status: async (): Promise<ProviderAuthStatus> => {
+      try {
+        await this.#listVaults();
+        return { loggedIn: true };
+      } catch {
+        return { loggedIn: false };
+      }
+    },
+    // pass-cli login is interactive (browser / TOTP prompts), so it has
+    // to happen in a terminal. Recheck afterwords in case the user
+    // already did it.
+    login: async () => {
+      this.clearCache();
+      const status = await this.auth.status();
+      if (status.loggedIn) {
+        new Notice(t("provider.protonpass.loggedIn"));
+      } else {
+        new Notice(t("provider.protonpass.loginHint"), 10_000);
+      }
+      this.#ctx.notifyAuthChanged(this.id);
+      this.#notify();
+    },
+    logout: async () => {
+      try {
+        await runPassCli(this.#settings.binaryPath, ["logout"], VIEW_MAX_BUFFER);
+      } catch (e) {
+        new Notice(e instanceof Error ? e.message : String(e));
+      }
+      this.clearCache();
+      this.#ctx.notifyAuthChanged(this.id);
+      this.#notify();
+    },
+    onChange: (cb) => {
+      this.#listeners.add(cb);
+      return () => this.#listeners.delete(cb);
+    },
+  };
 
-  constructor(private ctx: PluginContext) {
-    this.auth = {
-      status: async (): Promise<ProviderAuthStatus> => {
-        try {
-          await this.listVaults();
-          return { loggedIn: true };
-        } catch {
-          return { loggedIn: false };
-        }
-      },
-      // pass-cli login is interactive (browser / TOTP prompts), so it has
-      // to happen in a terminal. Recheck afterwords in case the user
-      // already did it.
-      login: async () => {
-        this.clearCache();
-        const status = await this.auth.status();
-        if (status.loggedIn) {
-          new Notice(t("provider.protonpass.loggedIn"));
-        } else {
-          new Notice(t("provider.protonpass.loginHint"), 10_000);
-        }
-        this.ctx.notifyAuthChanged(this.id);
-        this.notify();
-      },
-      logout: async () => {
-        try {
-          await runPassCli(this.settings.binaryPath, ["logout"], VIEW_MAX_BUFFER);
-        } catch (e) {
-          new Notice(e instanceof Error ? e.message : String(e));
-        }
-        this.clearCache();
-        this.ctx.notifyAuthChanged(this.id);
-        this.notify();
-      },
-      onChange: (cb) => {
-        this.listeners.add(cb);
-        return () => this.listeners.delete(cb);
-      },
-    };
+  constructor(ctx: PluginContext) {
+    this.#ctx = ctx;
   }
 
-  private notify(): void {
-    for (const cb of this.listeners) {
+  #notify(): void {
+    for (const cb of this.#listeners) {
       try {
         cb();
       } catch {
@@ -122,13 +122,15 @@ export class ProtonPassProvider implements Provider {
   }
 
   async init(): Promise<void> {
-    const saved = await this.ctx.loadProviderData<ProtonPassSettings>(this.id);
-    if (saved) this.settings = { ...DEFAULTS, ...saved };
-    if (!this.settings.binaryPath) this.settings.binaryPath = defaultBinaryPath();
+    const saved = await this.#ctx.loadProviderData<ProtonPassSettings>(this.id);
+    const merged = { ...DEFAULTS, ...saved };
+    this.#settings = { ...merged, binaryPath: merged.binaryPath || defaultBinaryPath() };
   }
 
-  private async persist(): Promise<void> {
-    await this.ctx.saveProviderData(this.id, this.settings);
+  /** Replace the settings with `patch` applied and persist them. */
+  async #update(patch: Partial<ProtonPassSettings>): Promise<void> {
+    this.#settings = { ...this.#settings, ...patch };
+    await this.#ctx.saveProviderData(this.id, this.#settings);
   }
 
   parseRef(raw: string): ProviderRef | null {
@@ -142,20 +144,20 @@ export class ProtonPassProvider implements Provider {
 
   /** Cached by key. A rejected promise is evicted so a retry asks again,
    *  so `load` should include any parsing that can fail. */
-  private cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  #cached<T>(key: string, load: () => Promise<T>): Promise<T> {
     const now = Date.now();
-    const hit = this.cache.get(key);
+    const hit = this.#cache.get(key);
 
     if (hit && hit.expires > now) {
       return hit.value as Promise<T>;
     } else {
       const value = load();
-      const entry = { expires: now + this.settings.cacheTtlSec * 1000, value };
+      const entry = { expires: now + this.#settings.cacheTtlSec * 1000, value };
 
-      this.cache.set(key, entry);
+      this.#cache.set(key, entry);
       value.catch(() => {
-        if (this.cache.get(key) === entry) {
-          this.cache.delete(key);
+        if (this.#cache.get(key) === entry) {
+          this.#cache.delete(key);
         }
       });
       return value;
@@ -167,8 +169,8 @@ export class ProtonPassProvider implements Provider {
     if (!passRef) {
       throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
     }
-    return this.cached(`view:${passRef}`, async () => {
-      const stdout = await runPassCli(this.settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER);
+    return this.#cached(`view:${passRef}`, async () => {
+      const stdout = await runPassCli(this.#settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER);
       // Strip exactly one trailing newline; secrets may end in spaces.
       return stdout.replace(/\r?\n$/, "");
     });
@@ -178,29 +180,29 @@ export class ProtonPassProvider implements Provider {
     throw new ProtonPassError("unknown", t("provider.protonpass.readOnly"));
   }
 
-  private listVaults(): Promise<string[]> {
-    return this.cached("vaults", async () => {
-      const stdout = await runPassCli(this.settings.binaryPath, ["vault", "list", "--output", "json"], LIST_MAX_BUFFER);
+  #listVaults(): Promise<string[]> {
+    return this.#cached("vaults", async () => {
+      const stdout = await runPassCli(this.#settings.binaryPath, ["vault", "list", "--output", "json"], LIST_MAX_BUFFER);
       return vaultNames(parseJson(stdout));
     });
   }
 
-  private listItems(vault: string): Promise<string[]> {
-    return this.cached(`items:${vault}`, async () => {
-      const stdout = await runPassCli(this.settings.binaryPath, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
+  #listItems(vault: string): Promise<string[]> {
+    return this.#cached(`items:${vault}`, async () => {
+      const stdout = await runPassCli(this.#settings.binaryPath, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
       return itemTitles(parseJson(stdout));
     });
   }
 
   async list(): Promise<ProviderRef[]> {
-    const vaults = await this.listVaults();
-    const wanted = this.settings.defaultVault.trim();
+    const vaults = await this.#listVaults();
+    const wanted = this.#settings.defaultVault.trim();
     const candidates = wanted ? vaults.filter((v) => v === wanted) : vaults;
     // A leading "-" would be read as a flag by pass-cli.
     const targets = candidates.filter((v) => !v.startsWith("-"));
     const partsByVault = await Promise.all(
       targets.map(async (vault) => {
-        const titles = await this.listItems(vault).catch(() => [] as string[]);
+        const titles = await this.#listItems(vault).catch(() => [] as string[]);
         // Listing doesn't tell us which fields an item has without fetching
         // each one, so surface nothing so the user can edit the placeholder
         // themselves.
@@ -215,12 +217,12 @@ export class ProtonPassProvider implements Provider {
   }
 
   clearCache(): void {
-    this.cache.clear();
+    this.#cache.clear();
   }
 
   suggestRefDefaults(ctx: NoteContext): Record<string, string> {
     return {
-      vault: this.settings.defaultVault || "Personal",
+      vault: this.#settings.defaultVault || "Personal",
       item: slugify(ctx.basename ?? "untitled"),
       field: "password",
     };
@@ -237,11 +239,10 @@ export class ProtonPassProvider implements Provider {
       .addText((txt) =>
         txt
           .setPlaceholder(defaultBinaryPath())
-          .setValue(this.settings.binaryPath)
+          .setValue(this.#settings.binaryPath)
           .onChange(async (v) => {
-            this.settings.binaryPath = v.trim();
             this.clearCache();
-            await this.persist();
+            await this.#update({ binaryPath: v.trim() });
           }),
       );
 
@@ -249,9 +250,8 @@ export class ProtonPassProvider implements Provider {
       .setName(t("provider.protonpass.defaultVault.name"))
       .setDesc(t("provider.protonpass.defaultVault.desc"))
       .addText((txt) =>
-        txt.setValue(this.settings.defaultVault).onChange(async (v) => {
-          this.settings.defaultVault = v.trim();
-          await this.persist();
+        txt.setValue(this.#settings.defaultVault).onChange(async (v) => {
+          await this.#update({ defaultVault: v.trim() });
         }),
       );
 
@@ -259,11 +259,10 @@ export class ProtonPassProvider implements Provider {
       .setName(t("provider.protonpass.cacheTtl.name"))
       .setDesc(t("provider.protonpass.cacheTtl.desc"))
       .addText((txt) =>
-        txt.setValue(String(this.settings.cacheTtlSec)).onChange(async (v) => {
+        txt.setValue(String(this.#settings.cacheTtlSec)).onChange(async (v) => {
           const n = Number(v);
           if (!Number.isFinite(n) || n < 0) return;
-          this.settings.cacheTtlSec = n;
-          await this.persist();
+          await this.#update({ cacheTtlSec: n });
         }),
       );
   }

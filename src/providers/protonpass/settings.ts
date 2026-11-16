@@ -2,13 +2,13 @@
 
 import { Platform } from "obsidian";
 
-export interface ProtonPassSettings {
+export type ProtonPassSettings = Readonly<{
   /** Absolute path to the pass-cli binary. Obsidian launched from the
    *  dock does not inherit the shell PATH, so a bare name won't resolve. */
   binaryPath: string;
   defaultVault: string;
   cacheTtlSec: number;
-}
+}>;
 
 export const defaultBinaryPath = (): string => {
   if (Platform.isWin) {
@@ -20,8 +20,8 @@ export const defaultBinaryPath = (): string => {
   }
 };
 
-export const DEFAULTS: ProtonPassSettings = {
+export const DEFAULTS = {
   binaryPath: "",
   defaultVault: "",
   cacheTtlSec: 300,
-};
+} as const satisfies ProtonPassSettings;

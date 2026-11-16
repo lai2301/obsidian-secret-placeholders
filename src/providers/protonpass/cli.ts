@@ -9,8 +9,8 @@ import { ProtonPassError } from "./errors";
 const TIMEOUT_MS = 10_000;
 
 // Derived from recorded pass-cli 2.7 stderr. Don't guess these.
-const AUTH_PATTERNS = [/requires an authenticated client/, /there is no session/];
-const NOT_FOUND_PATTERNS = [
+const AUTH_PATTERNS: readonly RegExp[] = [/requires an authenticated client/, /there is no session/];
+const NOT_FOUND_PATTERNS: readonly RegExp[] = [
   /Could not find vault /,
   /Could not find item /,
   /Field does not exist: /,
@@ -41,13 +41,11 @@ const ANSI_RE = /\u001b\[[0-9;]*m/g;
 
 /** Tidy one stderr line for display: drop the "Error:" or numbered-cause
  *  ("1:") prefix and cap the length. */
-const cleanLine = (line: string): string => {
-  return line.trim().replace(/^(Error:|\d+:)\s*/, "").slice(0, 200);
-};
+const cleanLine = (line: string): string =>
+  line.trim().replace(/^(Error:|\d+:)\s*/, "").slice(0, 200);
 
-const matchesAny = (patterns: RegExp[], s: string): boolean => {
-  return patterns.some((p) => p.test(s));
-};
+const matchesAny = (patterns: readonly RegExp[], s: string): boolean =>
+  patterns.some((p) => p.test(s));
 
 const classifyStderr = (stderr: string): ProtonPassError => {
   const lines = stderr

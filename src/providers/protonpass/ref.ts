@@ -1,8 +1,8 @@
 // Placeholder grammar: {{pass:<vault>/<item>/<field>}} and its mapping onto
-// pass-cli's pass://<vault>/<item>/<field> secret references.
+// pass-cli's pass://<vault>/<item>/<field> secret URI references.
 
-/** Placeholder prefix inside `{{...}}`.  Must stay free of regex
- *  metacharacters; it is spliced into PLACEHOLDER_RE as-is. */
+/** Placeholder prefix inside `{{...}}`. Must stay free of regex
+ *  metacharacters. it is spliced into PLACEHOLDER_RE as-is. */
 export const PREFIX = "pass:";
 
 export type PassRefParts = { vault: string; item: string; field: string };
@@ -15,12 +15,8 @@ export const PLACEHOLDER_RE = new RegExp(
   "g",
 );
 
-const hasControlChars = (s: string): boolean => {
-  return Array.from(s).some((ch) => {
-    const c = ch.charCodeAt(0);
-    return c < 0x20 || c === 0x7f;
-  });
-};
+// Unicode "Cc": C0 controls, DEL and the C1 controls U+0080–U+009F.
+const hasControlChars = (s: string): boolean => /\p{Cc}/u.test(s);
 
 /** Read the parts out of a provider-interface ref, which only promises a
  *  string record. */
@@ -44,9 +40,8 @@ export const toPassRef = (parts: PassRefParts): string | null => {
   return `pass://${segments.join("/")}`;
 };
 
-export const formatPlaceholder = ({ vault, item, field }: PassRefParts): string => {
-  return `{{${PREFIX}${vault}/${item}/${field}}}`;
-};
+export const formatPlaceholder = ({ vault, item, field }: PassRefParts): string =>
+  `{{${PREFIX}${vault}/${item}/${field}}}`;
 
 /** Parse the first placeholder in `raw`, or null if there is none or its
  *  parts can't form a valid pass:// reference. */

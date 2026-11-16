@@ -5,13 +5,11 @@ import { ProtonPassError } from "./errors";
 
 type Json = Record<string, unknown>;
 
-const unexpectedOutput = (): ProtonPassError => {
-  return new ProtonPassError("unknown", "pass-cli returned unexpected output");
-};
+const unexpectedOutput = (): ProtonPassError =>
+  new ProtonPassError("unknown", "pass-cli returned unexpected output");
 
-const isObject = (v: unknown): v is Json => {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-};
+const isObject = (v: unknown): v is Json =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
 
 // pass-cli 2.7 `vault list --output json`:
 //   { "vaults": [{ "name": string, "vault_id": string, "share_id": string }] }
