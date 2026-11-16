@@ -28,7 +28,7 @@ import {
   ProviderAuthStatus,
   ProviderRef,
 } from "../types";
-import { PassCli, ProtonPassError } from "./cli";
+import { ProtonPassError, runPassCli } from "./cli";
 import { itemTitles, parseJson, vaultNames } from "./json";
 import { PLACEHOLDER_RE, toPassRef } from "./ref";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
@@ -54,7 +54,6 @@ export class ProtonPassProvider implements Provider {
   readonly readOnly = true;
 
   private settings: ProtonPassSettings = { ...DEFAULTS };
-  private cli: PassCli;
   // Holds lookups, not values, so concurrent reads of one ref share a
   // single pass-cli call. Failures are dropped once they settle.
   private cache = new Map<string, { expires: number; value: Promise<string> }>();
@@ -63,8 +62,6 @@ export class ProtonPassProvider implements Provider {
   private listeners = new Set<() => void>();
 
   constructor(private ctx: PluginContext) {
-    this.cli = new PassCli(() => this.settings.binaryPath);
-
     this.auth = {
       status: async (): Promise<ProviderAuthStatus> => {
         try {
@@ -90,7 +87,7 @@ export class ProtonPassProvider implements Provider {
       },
       logout: async () => {
         try {
-          await this.cli.run(["logout"], VIEW_MAX_BUFFER);
+          await runPassCli(this.settings.binaryPath, ["logout"], VIEW_MAX_BUFFER);
         } catch (e) {
           new Notice((e as Error).message);
         }
@@ -168,7 +165,7 @@ export class ProtonPassProvider implements Provider {
       throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
     }
     const stdout = await this.cached(`view:${passRef}`, () =>
-      this.cli.run(["item", "view", passRef], VIEW_MAX_BUFFER),
+      runPassCli(this.settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER),
     );
     // Strip exactly one trailing newline; secrets may end in spaces.
     return stdout.replace(/\r?\n$/, "");
@@ -180,14 +177,14 @@ export class ProtonPassProvider implements Provider {
 
   private async listVaults(): Promise<string[]> {
     const stdout = await this.cached("vaults", () =>
-      this.cli.run(["vault", "list", "--output", "json"], LIST_MAX_BUFFER),
+      runPassCli(this.settings.binaryPath, ["vault", "list", "--output", "json"], LIST_MAX_BUFFER),
     );
     return vaultNames(parseJson(stdout));
   }
 
   private async listItems(vault: string): Promise<string[]> {
     const stdout = await this.cached(`items:${vault}`, () =>
-      this.cli.run(["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER),
+      runPassCli(this.settings.binaryPath, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER),
     );
     return itemTitles(parseJson(stdout));
   }

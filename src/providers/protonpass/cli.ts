@@ -87,53 +87,52 @@ const classifyStderr = (stderr: string): ProtonPassError => {
   }
 };
 
-export class PassCli {
-  constructor(private getBinaryPath: () => string) { }
-
-  /** Run pass-cli with argv and resolve to stdout.  Rejects with a
-   *  ProtonPassError whose message never contains stdout. */
-  run(args: string[], maxBuffer: number): Promise<string> {
-    const bin = this.getBinaryPath();
-    if (!isValidBinaryPath(bin)) {
-      return Promise.reject(
-        new ProtonPassError("unavailable", t("provider.protonpass.invalidBinary")),
-      );
-    }
-    return new Promise((resolve, reject) => {
-      try {
-        const cp = requireNode<NodeChildProcess>("child_process");
-        cp.execFile(
-          bin,
-          args,
-          {
-            shell: false,
-            timeout: TIMEOUT_MS,
-            maxBuffer,
-            windowsHide: true,
-            encoding: "utf8",
-          },
-          (err, stdout, stderr) => {
-            if (!err) {
-              resolve(stdout);
-            } else if (err.code === "ENOENT" || err.code === "EACCES") {
-              reject(
-                new ProtonPassError("unavailable", t("provider.protonpass.binaryNotFound", { path: bin })),
-              );
-            } else if (err.killed) {
-              reject(new ProtonPassError("unknown", "pass-cli timed out"));
-            } else if (typeof err.code === "number") {
-              reject(classifyStderr(stderr));
-            } else {
-              reject(new ProtonPassError("unknown", String(err.code ?? err.message)));
-            }
-          },
-        );
-      } catch (e) {
-        reject(new ProtonPassError("unavailable", (e as Error).message));
-      }
-    });
+/** Run the pass-cli at `bin` with argv and resolve to stdout.  Rejects with
+ *  a ProtonPassError whose message never contains stdout. */
+export const runPassCli = (
+  bin: string,
+  args: string[],
+  maxBuffer: number,
+): Promise<string> => {
+  if (!isValidBinaryPath(bin)) {
+    return Promise.reject(
+      new ProtonPassError("unavailable", t("provider.protonpass.invalidBinary")),
+    );
   }
-}
+  return new Promise((resolve, reject) => {
+    try {
+      const cp = requireNode<NodeChildProcess>("child_process");
+      cp.execFile(
+        bin,
+        args,
+        {
+          shell: false,
+          timeout: TIMEOUT_MS,
+          maxBuffer,
+          windowsHide: true,
+          encoding: "utf8",
+        },
+        (err, stdout, stderr) => {
+          if (!err) {
+            resolve(stdout);
+          } else if (err.code === "ENOENT" || err.code === "EACCES") {
+            reject(
+              new ProtonPassError("unavailable", t("provider.protonpass.binaryNotFound", { path: bin })),
+            );
+          } else if (err.killed) {
+            reject(new ProtonPassError("unknown", "pass-cli timed out"));
+          } else if (typeof err.code === "number") {
+            reject(classifyStderr(stderr));
+          } else {
+            reject(new ProtonPassError("unknown", String(err.code ?? err.message)));
+          }
+        },
+      );
+    } catch (e) {
+      reject(new ProtonPassError("unavailable", (e as Error).message));
+    }
+  });
+};
 
 /** Absolute path whose file name is pass-cli itself, so settings can't be
  *  pointed at an arbitrary program by accident. */
