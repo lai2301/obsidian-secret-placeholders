@@ -19,13 +19,45 @@ const NOT_FOUND_PATTERNS: readonly RegExp[] = [
   /Field does not exist: /,
 ];
 
+// Node interop is typed with local interfaces rather than @types/node, like
+// openbao/oidcLogin.ts, so the community-plugin review scanner doesn't need
+// Node types to see these calls as typed.
+
 /** What the promisified execFile rejects with: the exec error plus the process output. */
-type ExecFailure = import("child_process").ExecFileException & { stderr?: string };
+interface ExecFailure extends Error {
+  code?: string | number | null;
+  killed?: boolean;
+  signal?: string | null;
+  stderr?: string;
+}
+
+interface ExecFileOptions {
+  shell: false;
+  timeout: number;
+  maxBuffer: number;
+  windowsHide: boolean;
+  encoding: "utf8";
+}
+
+/** `util.promisify(child_process.execFile)`, as called here. */
+type ExecFileAsync = (
+  file: string,
+  args: readonly string[],
+  options: ExecFileOptions,
+) => Promise<{ stdout: string; stderr: string }>;
+
+interface NodeChildProcessModule {
+  execFile: unknown;
+}
+
+interface NodeUtilModule {
+  promisify: (execFile: NodeChildProcessModule["execFile"]) => ExecFileAsync;
+}
 
 /**
  * Load a Node built-in through Electron's `require()`. Built-ins are external
  * to the bundle, so a static import would load at plugin start and break on
- * mobile. Only their types are imported statically.
+ * mobile.
  */
 const requireNode = <T>(id: string): T => {
   const req = (window as unknown as { require: (id: string) => unknown })
@@ -38,10 +70,10 @@ const requireNode = <T>(id: string): T => {
  *
  * @throws {ProtonPassError} "unavailable" if Node's modules can't be loaded.
  */
-const loadExecFile = () => {
+const loadExecFile = (): ExecFileAsync => {
   try {
-    const { execFile } = requireNode<typeof import("child_process")>("child_process");
-    const { promisify } = requireNode<typeof import("util")>("util");
+    const { execFile } = requireNode<NodeChildProcessModule>("child_process");
+    const { promisify } = requireNode<NodeUtilModule>("util");
     return promisify(execFile);
   } catch (e) {
     throw new ProtonPassError("unavailable", errorMessage(e));
