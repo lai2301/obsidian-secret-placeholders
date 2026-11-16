@@ -198,9 +198,14 @@ export class ProtonPassProvider implements Provider {
   async writeKey(ref: ProviderRef, value: string): Promise<void> {
     const parts = fromRecord(ref.parts);
     const passRef = requirePassRef(parts);
-    await repo.upsertField(this.#settings.binaryPath, parts, value);
-    this.#cache.delete(`view:${passRef}`);
-    this.#cache.delete(`items:${parts.vault}`);
+    try {
+      await repo.upsertField(this.#settings.binaryPath, parts, value);
+    } finally {
+      // A failed upsert may still have created the item, so drop these
+      // either way.
+      this.#cache.delete(`view:${passRef}`);
+      this.#cache.delete(`items:${parts.vault}`);
+    }
   }
 
   #listVaults(): Promise<string[]> {
