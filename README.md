@@ -50,7 +50,7 @@ display-only — it never writes to the vault.
 | Bitwarden cloud | Master password |
 | Proton Pass (desktop) | `pass-cli login` session |
 
-Each backend has its own placeholder prefix — `bao:`, `1p:`, `vw:`, `pass:`.
+Each backend has its own placeholder prefix — `bao:`, `1p:`, `vw:`, `pp:`.
 Enable any subset; disabled backends contribute no UI.
 
 ## Install

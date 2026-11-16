@@ -154,7 +154,7 @@ depends on the provider.
 | OpenBao | `{{bao:<mount>/<path>#<key>}}` | `{{bao:kv/obsidian/github#token}}` |
 | 1Password | `{{1p:<vault>/<item>#<field>}}` | `{{1p:Personal/GitHub#password}}` |
 | Bitwarden | `{{vw:[<folder>/]<item>#<field>}}` | `{{vw:Work/CI#password}}` or `{{vw:GitHub#password}}` |
-| Proton Pass | `{{pass:<vault>/<item>/<field>}}` | `{{pass:Personal/GitHub/password}}` |
+| Proton Pass | `{{pp:<vault>/<item>/<field>}}` | `{{pp:Personal/GitHub/password}}` |
 
 Notes:
 

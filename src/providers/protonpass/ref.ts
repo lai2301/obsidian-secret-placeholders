@@ -1,5 +1,5 @@
 /**
- * Placeholder grammar, `{{pass:<vault>/<item>/<field>}}`, and its mapping onto
+ * Placeholder grammar, `{{pp:<vault>/<item>/<field>}}`, and its mapping onto
  * pass-cli's `pass://<vault>/<item>/<field>` secret URI references.
  */
 
@@ -7,13 +7,13 @@
  * Placeholder prefix inside `{{...}}`. It must stay free of regex
  * metacharacters, because it is spliced into {@link PLACEHOLDER_RE} as-is.
  */
-export const PREFIX = "pass:";
+export const PREFIX = "pp:";
 
 /** The three segments of a Proton Pass reference. */
 export type PassRefParts = { vault: string; item: string; field: string };
 
 /**
- * Matches `{{pass:<vault>/<item>/<field>}}`. `/` separates segments, so it
+ * Matches `{{pp:<vault>/<item>/<field>}}`. `/` separates segments, so it
  * can't appear inside one. `{` and `}` are forbidden so the closing braces
  * still terminate the match.
  */
@@ -53,7 +53,7 @@ export const toPassRef = (parts: PassRefParts): string | null => {
   return `pass://${segments.join("/")}`;
 };
 
-/** Render `parts` as a `{{pass:...}}` placeholder. */
+/** Render `parts` as a `{{pp:...}}` placeholder. */
 export const formatPlaceholder = ({ vault, item, field }: PassRefParts): string =>
   `{{${PREFIX}${vault}/${item}/${field}}}`;
 
