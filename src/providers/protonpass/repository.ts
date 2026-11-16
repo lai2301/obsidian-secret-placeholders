@@ -66,7 +66,7 @@ export const updateField = async (
   value: string,
 ): Promise<void> => {
   if (field.includes("=")) {
-    throw new ProtonPassError("unknown", `Field names can't contain "=": ${field}`);
+    throw new ProtonPassError("unknown", t("provider.protonpass.equalsInField", { field }));
   }
 
   await runPassCli(

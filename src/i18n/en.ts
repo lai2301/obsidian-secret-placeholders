@@ -229,6 +229,7 @@ export const en = {
   "provider.protonpass.invalidBinary": "pass-cli path must be absolute and end in pass-cli. Check the plugin settings.",
   "provider.protonpass.binaryNotFound": "pass-cli not found or not executable at {path}",
   "provider.protonpass.invalidRef": "Invalid Proton Pass reference",
+  "provider.protonpass.equalsInField": "Field names can't contain \"=\": {field}",
   "provider.protonpass.dashVault": "Can't save to vault \"{vault}\": names starting with \"-\" aren't supported",
   "provider.protonpass.binaryPath.name": "pass-cli path",
   "provider.protonpass.binaryPath.desc": "Absolute path to the Proton Pass CLI binary. Obsidian does not inherit your shell PATH.",
