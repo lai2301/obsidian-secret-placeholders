@@ -32,11 +32,17 @@ export const listVaultNames = async (bin: string): Promise<string[]> => {
 };
 
 /**
- * Titles of the active (not trashed) items in `vault`. A vault name starting
- * with "-" would be read as a flag by pass-cli, so it lists nothing.
+ * True if `vault` can't be passed to `item list`, which takes the vault as a
+ * positional argument. A name starting with "-" would be read as a flag.
+ */
+const isUnlistableVault = (vault: string): boolean => vault.startsWith("-");
+
+/**
+ * Titles of the active (not trashed) items in `vault`. An unlistable vault
+ * (see {@link isUnlistableVault}) lists nothing.
  */
 export const listItemTitles = async (bin: string, vault: string): Promise<string[]> => {
-  if (vault.startsWith("-")) return [];
+  if (isUnlistableVault(vault)) return [];
 
   const stdout = await runPassCli(bin, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
   return itemTitles(parseJson(stdout));
@@ -88,16 +94,16 @@ export const updateField = async (
  * the item as an empty note if `vault` has no item with that title.
  *
  * The titles come straight from pass-cli, never a cache, so a stale listing
- * can't turn an update into a duplicate item. A vault starting with "-"
- * can't be listed (see {@link listItemTitles}), so writing to it is refused
- * rather than creating a new note on every save.
+ * can't turn an update into a duplicate item. An unlistable vault (see
+ * {@link isUnlistableVault}) is refused rather than getting a new note on
+ * every save.
  */
 export const upsertField = async (
   bin: string,
   parts: PassRefParts,
   value: string,
 ): Promise<void> => {
-  if (parts.vault.startsWith("-")) {
+  if (isUnlistableVault(parts.vault)) {
     throw new ProtonPassError("unknown", t("provider.protonpass.dashVault", { vault: parts.vault }));
   }
 

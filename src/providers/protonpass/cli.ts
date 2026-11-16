@@ -20,9 +20,9 @@ const NOT_FOUND_PATTERNS: readonly RegExp[] = [
   /Field does not exist: /,
 ];
 
-// Node interop is typed with local interfaces rather than @types/node, like
-// openbao/oidcLogin.ts, so the community-plugin review scanner doesn't need
-// Node types to see these calls as typed.
+// Node interop is typed with local interfaces rather than @types/node (see
+// src/node.ts), so the community-plugin review scanner doesn't need Node
+// types to see these calls as typed.
 
 /** What the promisified execFile rejects with: the exec error plus the process output. */
 interface ExecFailure extends Error {
