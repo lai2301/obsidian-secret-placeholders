@@ -1,5 +1,7 @@
-// Runs the pass-cli binary and turns its failures into ProtonPassErrors.
-// Desktop only: spawning a process needs Node's child_process.
+/**
+ * Runs the pass-cli binary and turns its failures into ProtonPassErrors.
+ * Desktop only, because spawning a process needs Node's `child_process`.
+ */
 
 import { Platform } from "obsidian";
 
@@ -8,45 +10,51 @@ import { ProtonPassError } from "./errors";
 
 const TIMEOUT_MS = 10_000;
 
-// Derived from recorded pass-cli 2.7 stderr. Don't guess these.
+/** Stderr signs of a missing session, from recorded pass-cli 2.7 output. Don't guess these. */
 const AUTH_PATTERNS: readonly RegExp[] = [/requires an authenticated client/, /there is no session/];
+/** Stderr signs of a missing vault, item or field, from recorded pass-cli 2.7 output. */
 const NOT_FOUND_PATTERNS: readonly RegExp[] = [
   /Could not find vault /,
   /Could not find item /,
   /Field does not exist: /,
 ];
 
-// The promisified execFile rejects with the usual exec error plus the
-// process output.
+/** What the promisified execFile rejects with: the exec error plus the process output. */
 type ExecFailure = import("child_process").ExecFileException & { stderr?: string };
 
-// Node interop is desktop-only and reached through Electron's require().
-// Built-ins are external to the bundle, so a static import would be loaded
-// at plugin start and break on mobile; only the types are imported.
+/**
+ * Load a Node built-in through Electron's `require()`. Built-ins are external
+ * to the bundle, so a static import would load at plugin start and break on
+ * mobile. Only their types are imported statically.
+ */
 const requireNode = <T>(id: string): T => {
   const req = (window as unknown as { require: (id: string) => unknown })
     .require;
   return req(id) as T;
 };
 
+/** Promisified `child_process.execFile`, loaded on first use. */
 const loadExecFile = () => {
   const { execFile } = requireNode<typeof import("child_process")>("child_process");
   const { promisify } = requireNode<typeof import("util")>("util");
   return promisify(execFile);
 };
 
-// pass-cli colours its log lines; strip ANSI escapes before showing them.
+/** ANSI colour escapes. pass-cli colours its log lines, so strip them before showing one. */
 // eslint-disable-next-line no-control-regex -- matching ESC is the point
 const ANSI_RE = /\u001b\[[0-9;]*m/g;
 
-/** Tidy one stderr line for display: drop the "Error:" or numbered-cause
- *  ("1:") prefix and cap the length. */
+/**
+ * Tidy one stderr line for display. Drops the "Error:" or numbered-cause
+ * ("1:") prefix and caps the length.
+ */
 const cleanLine = (line: string): string =>
   line.trim().replace(/^(Error:|\d+:)\s*/, "").slice(0, 200);
 
 const matchesAny = (patterns: readonly RegExp[], s: string): boolean =>
   patterns.some((p) => p.test(s));
 
+/** Map a non-zero pass-cli exit to a ProtonPassError using its stderr. */
 const classifyStderr = (stderr: string): ProtonPassError => {
   const lines = stderr
     .replace(ANSI_RE, "")
@@ -67,7 +75,7 @@ const classifyStderr = (stderr: string): ProtonPassError => {
   }
 };
 
-/** Map a failed execFile call to a ProtonPassError.  Never reads stdout. */
+/** Map a failed execFile call to a ProtonPassError. Never reads stdout. */
 const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   if (!(err instanceof Error)) return new ProtonPassError("unknown", String(err));
 
@@ -83,8 +91,10 @@ const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   }
 };
 
-/** Absolute path whose file name is pass-cli itself, so settings can't be
- *  pointed at an arbitrary program by accident. */
+/**
+ * Accept only an absolute path whose file name is pass-cli itself, so
+ * settings can't point at an arbitrary program by accident.
+ */
 const isValidBinaryPath = (p: string): boolean => {
   if (!p || p.includes("\u0000")) return false;
   const absolute = Platform.isWin ? /^[A-Za-z]:[\\/]|^\\\\/.test(p) : p.startsWith("/");
@@ -93,8 +103,11 @@ const isValidBinaryPath = (p: string): boolean => {
   return absolute && allowed.includes(name);
 };
 
-/** Run the pass-cli at `bin` with argv and resolve to stdout.  Rejects with
- *  a ProtonPassError whose message never contains stdout. */
+/**
+ * Run the pass-cli at `bin` with `args` and resolve to its stdout.
+ *
+ * @throws {ProtonPassError} On any failure. The message never contains stdout.
+ */
 export const runPassCli = async (
   bin: string,
   args: string[],

@@ -1,5 +1,7 @@
-// Parsers for pass-cli's `--output json` listings.  The shapes are assumed
-// stable; anything else throws rather than guessing.
+/**
+ * Parsers for pass-cli's `--output json` listings. The shapes are assumed
+ * stable, and anything else throws rather than guessing.
+ */
 
 import { ProtonPassError } from "./errors";
 
@@ -11,8 +13,13 @@ const unexpectedOutput = (): ProtonPassError =>
 const isObject = (v: unknown): v is Json =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-// pass-cli 2.7 `vault list --output json`:
-//   { "vaults": [{ "name": string, "vault_id": string, "share_id": string }] }
+/**
+ * Read one vault's name from pass-cli 2.7 `vault list --output json`:
+ *
+ * ```json
+ * { "vaults": [{ "name": string, "vault_id": string, "share_id": string }] }
+ * ```
+ */
 const toVaultName = (v: unknown): string => {
   if (!isObject(v) || typeof v.name !== "string") throw unexpectedOutput();
   return v.name;
@@ -23,8 +30,13 @@ export const vaultNames = (json: unknown): string[] => {
   return json.vaults.map(toVaultName);
 };
 
-// pass-cli 2.7 `item list --output json`:
-//   { "items": [{ "title": string, "state": "Active" | ..., ... }], "folders": [] }
+/**
+ * The fields read from one entry of pass-cli 2.7 `item list --output json`:
+ *
+ * ```json
+ * { "items": [{ "title": string, "state": "Active" | ..., ... }], "folders": [] }
+ * ```
+ */
 interface ListedItem {
   title: string;
   state: string;

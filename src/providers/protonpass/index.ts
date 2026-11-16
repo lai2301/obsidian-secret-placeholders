@@ -1,20 +1,22 @@
-// Proton Pass provider.  Shells out to the official `pass-cli` binary, which
-// owns the session (login happens in a terminal with `pass-cli login`).
-// Desktop only: spawning a process needs Node's child_process.
-//
-// Placeholder syntax: {{pass:<vault>/<item>/<field>}}
-//   - maps 1:1 onto pass-cli's secret reference pass://<vault>/<item>/<field>
-//   - <vault> = vault name, <item> = item title, <field> = field name
-//     (e.g. "password", "username", "email", or a custom field)
-//
-// Read-only: reading and listing are supported, creating or editing items
-// is not.
-//
-// Security notes:
-//   - the binary path comes from plugin settings only, never note content;
-//   - the process runs without a shell, so a ref is always a single argv
-//     element and spaces / shell metacharacters are inert;
-//   - errors surface stderr only, never stdout (which may hold a secret).
+/**
+ * Proton Pass provider. Shells out to the official `pass-cli` binary, which
+ * owns the session (login happens in a terminal with `pass-cli login`).
+ * Desktop only, because spawning a process needs Node's `child_process`.
+ *
+ * Placeholder syntax is `{{pass:<vault>/<item>/<field>}}`:
+ * - It maps 1:1 onto pass-cli's secret reference `pass://<vault>/<item>/<field>`.
+ * - `<vault>` is the vault name, `<item>` the item title and `<field>` the
+ *   field name (e.g. "password", "username", "email" or a custom field).
+ *
+ * Read-only: reading and listing are supported, creating or editing items
+ * is not.
+ *
+ * Security notes:
+ * - The binary path comes from plugin settings only, never note content.
+ * - The process runs without a shell, so a ref is always a single argv
+ *   element and spaces or shell metacharacters are inert.
+ * - Errors surface stderr only, never stdout, which may hold a secret.
+ */
 
 import { Notice, Setting } from "obsidian";
 
@@ -41,9 +43,11 @@ import {
 } from "./ref";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
-// `item view` prints one field; `item list` prints whole items as JSON.
+/** Output cap for commands that print one field, such as `item view`. */
 const VIEW_MAX_BUFFER = 64 * 1024;
+/** Output cap for listings, which print whole items as JSON. */
 const LIST_MAX_BUFFER = 8 * 1024 * 1024;
+/** Upper bound on refs returned by {@link ProtonPassProvider.list}. */
 const MAX_LIST_ITEMS = 500;
 
 const slugify = (s: string): string =>
@@ -62,9 +66,12 @@ export class ProtonPassProvider implements Provider {
 
   readonly #ctx: PluginContext;
   #settings: ProtonPassSettings = { ...DEFAULTS };
-  // Holds lookups, not values, so concurrent reads of one ref share a
-  // single pass-cli call. Failures are dropped once they settle. Each key
-  // prefix ("view:", "vaults", "items:") always stores the same result type.
+  /**
+   * In-flight and settled lookups keyed by command. Storing promises lets
+   * concurrent reads of one ref share a single pass-cli call. Failures are
+   * dropped once they settle. Each key prefix ("view:", "vaults", "items:")
+   * always stores the same result type.
+   */
   readonly #cache = new Map<string, { expires: number; value: Promise<unknown> }>();
   readonly #listeners = new Set<() => void>();
 
@@ -77,9 +84,11 @@ export class ProtonPassProvider implements Provider {
         return { loggedIn: false };
       }
     },
-    // pass-cli login is interactive (browser / TOTP prompts), so it has
-    // to happen in a terminal. Recheck afterwords in case the user
-    // already did it.
+    /**
+     * pass-cli login is interactive (browser and TOTP prompts), so it has
+     * to happen in a terminal. This only rechecks the session in case the
+     * user already logged in.
+     */
     login: async () => {
       this.clearCache();
       const status = await this.auth.status();
@@ -142,8 +151,11 @@ export class ProtonPassProvider implements Provider {
     return formatPlaceholder(fromRecord(parts));
   }
 
-  /** Cached by key. A rejected promise is evicted so a retry asks again,
-   *  so `load` should include any parsing that can fail. */
+  /**
+   * Return the cached result for `key`, or start `load` and cache it.
+   * A rejected promise is evicted so a retry asks again, so `load` should
+   * include any parsing that can fail.
+   */
   #cached<T>(key: string, load: () => Promise<T>): Promise<T> {
     const now = Date.now();
     const hit = this.#cache.get(key);
@@ -171,7 +183,7 @@ export class ProtonPassProvider implements Provider {
     }
     return this.#cached(`view:${passRef}`, async () => {
       const stdout = await runPassCli(this.#settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER);
-      // Strip exactly one trailing newline; secrets may end in spaces.
+      // Strip exactly one trailing newline, because secrets may end in spaces.
       return stdout.replace(/\r?\n$/, "");
     });
   }
@@ -203,9 +215,9 @@ export class ProtonPassProvider implements Provider {
     const partsByVault = await Promise.all(
       targets.map(async (vault) => {
         const titles = await this.#listItems(vault).catch(() => [] as string[]);
-        // Listing doesn't tell us which fields an item has without fetching
-        // each one, so surface nothing so the user can edit the placeholder
-        // themselves.
+        // Listing doesn't say which fields an item has without fetching each
+        // one, so offer the conventional "password" field. The user can edit
+        // the placeholder to point elsewhere.
         return titles.map((item) => ({ vault, item, field: "password" }));
       }),
     );
