@@ -55,8 +55,9 @@ export class ProtonPassProvider implements Provider {
 
   private settings: ProtonPassSettings = { ...DEFAULTS };
   // Holds lookups, not values, so concurrent reads of one ref share a
-  // single pass-cli call. Failures are dropped once they settle.
-  private cache = new Map<string, { expires: number; value: Promise<string> }>();
+  // single pass-cli call. Failures are dropped once they settle. Each key
+  // prefix ("view:", "vaults", "items:") always stores the same result type.
+  private cache = new Map<string, { expires: number; value: Promise<unknown> }>();
   auth: ProviderAuth;
 
   private listeners = new Set<() => void>();
@@ -138,13 +139,14 @@ export class ProtonPassProvider implements Provider {
     return `{{pass:${vault}/${item}/${field}}}`;
   }
 
-  /** Cached by key. A rejected promise is evicted so a retry asks again. */
-  private cached(key: string, load: () => Promise<string>): Promise<string> {
+  /** Cached by key. A rejected promise is evicted so a retry asks again,
+   *  so `load` should include any parsing that can fail. */
+  private cached<T>(key: string, load: () => Promise<T>): Promise<T> {
     const now = Date.now();
     const hit = this.cache.get(key);
 
     if (hit && hit.expires > now) {
-      return hit.value;
+      return hit.value as Promise<T>;
     } else {
       const value = load();
       const entry = { expires: now + this.settings.cacheTtlSec * 1000, value };
@@ -164,29 +166,29 @@ export class ProtonPassProvider implements Provider {
     if (!passRef) {
       throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
     }
-    const stdout = await this.cached(`view:${passRef}`, () =>
-      runPassCli(this.settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER),
-    );
-    // Strip exactly one trailing newline; secrets may end in spaces.
-    return stdout.replace(/\r?\n$/, "");
+    return this.cached(`view:${passRef}`, async () => {
+      const stdout = await runPassCli(this.settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER);
+      // Strip exactly one trailing newline; secrets may end in spaces.
+      return stdout.replace(/\r?\n$/, "");
+    });
   }
 
   async writeKey(): Promise<void> {
     throw new ProtonPassError("unknown", t("provider.protonpass.readOnly"));
   }
 
-  private async listVaults(): Promise<string[]> {
-    const stdout = await this.cached("vaults", () =>
-      runPassCli(this.settings.binaryPath, ["vault", "list", "--output", "json"], LIST_MAX_BUFFER),
-    );
-    return vaultNames(parseJson(stdout));
+  private listVaults(): Promise<string[]> {
+    return this.cached("vaults", async () => {
+      const stdout = await runPassCli(this.settings.binaryPath, ["vault", "list", "--output", "json"], LIST_MAX_BUFFER);
+      return vaultNames(parseJson(stdout));
+    });
   }
 
-  private async listItems(vault: string): Promise<string[]> {
-    const stdout = await this.cached(`items:${vault}`, () =>
-      runPassCli(this.settings.binaryPath, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER),
-    );
-    return itemTitles(parseJson(stdout));
+  private listItems(vault: string): Promise<string[]> {
+    return this.cached(`items:${vault}`, async () => {
+      const stdout = await runPassCli(this.settings.binaryPath, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
+      return itemTitles(parseJson(stdout));
+    });
   }
 
   async list(): Promise<ProviderRef[]> {
