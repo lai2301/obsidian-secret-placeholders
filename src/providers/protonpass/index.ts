@@ -90,7 +90,7 @@ export class ProtonPassProvider implements Provider {
         try {
           await runPassCli(this.settings.binaryPath, ["logout"], VIEW_MAX_BUFFER);
         } catch (e) {
-          new Notice((e as Error).message);
+          new Notice(e instanceof Error ? e.message : String(e));
         }
         this.clearCache();
         this.ctx.notifyAuthChanged(this.id);

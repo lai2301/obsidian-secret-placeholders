@@ -129,7 +129,7 @@ export const runPassCli = (
         },
       );
     } catch (e) {
-      reject(new ProtonPassError("unavailable", (e as Error).message));
+      reject(new ProtonPassError("unavailable", e instanceof Error ? e.message : String(e)));
     }
   });
 };
