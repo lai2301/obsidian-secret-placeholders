@@ -30,9 +30,7 @@ import {
   ProviderAuthStatus,
   ProviderRef,
 } from "../types";
-import { runPassCli } from "./cli";
 import { ProtonPassError } from "./errors";
-import { itemTitles, parseJson, vaultNames } from "./json";
 import {
   PLACEHOLDER_RE,
   PREFIX,
@@ -41,12 +39,9 @@ import {
   parsePlaceholder,
   toPassRef,
 } from "./ref";
+import * as repo from "./repository";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
-/** Output cap for commands that print one field, such as `item view`. */
-const VIEW_MAX_BUFFER = 64 * 1024;
-/** Output cap for listings, which print whole items as JSON. */
-const LIST_MAX_BUFFER = 8 * 1024 * 1024;
 /** Upper bound on refs returned by {@link ProtonPassProvider.list}. */
 const MAX_LIST_ITEMS = 500;
 
@@ -102,7 +97,7 @@ export class ProtonPassProvider implements Provider {
     },
     logout: async () => {
       try {
-        await runPassCli(this.#settings.binaryPath, ["logout"], VIEW_MAX_BUFFER);
+        await repo.logout(this.#settings.binaryPath);
       } catch (e) {
         new Notice(e instanceof Error ? e.message : String(e));
       }
@@ -181,11 +176,9 @@ export class ProtonPassProvider implements Provider {
     if (!passRef) {
       throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
     }
-    return this.#cached(`view:${passRef}`, async () => {
-      const stdout = await runPassCli(this.#settings.binaryPath, ["item", "view", passRef], VIEW_MAX_BUFFER);
-      // Strip exactly one trailing newline, because secrets may end in spaces.
-      return stdout.replace(/\r?\n$/, "");
-    });
+    return this.#cached(`view:${passRef}`, () =>
+      repo.readSecret(this.#settings.binaryPath, passRef),
+    );
   }
 
   async writeKey(): Promise<void> {
@@ -193,25 +186,19 @@ export class ProtonPassProvider implements Provider {
   }
 
   #listVaults(): Promise<string[]> {
-    return this.#cached("vaults", async () => {
-      const stdout = await runPassCli(this.#settings.binaryPath, ["vault", "list", "--output", "json"], LIST_MAX_BUFFER);
-      return vaultNames(parseJson(stdout));
-    });
+    return this.#cached("vaults", () => repo.listVaultNames(this.#settings.binaryPath));
   }
 
   #listItems(vault: string): Promise<string[]> {
-    return this.#cached(`items:${vault}`, async () => {
-      const stdout = await runPassCli(this.#settings.binaryPath, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
-      return itemTitles(parseJson(stdout));
-    });
+    return this.#cached(`items:${vault}`, () =>
+      repo.listItemTitles(this.#settings.binaryPath, vault),
+    );
   }
 
   async list(): Promise<ProviderRef[]> {
     const vaults = await this.#listVaults();
     const wanted = this.#settings.defaultVault.trim();
-    const candidates = wanted ? vaults.filter((v) => v === wanted) : vaults;
-    // A leading "-" would be read as a flag by pass-cli.
-    const targets = candidates.filter((v) => !v.startsWith("-"));
+    const targets = wanted ? vaults.filter((v) => v === wanted) : vaults;
     const partsByVault = await Promise.all(
       targets.map(async (vault) => {
         const titles = await this.#listItems(vault).catch(() => [] as string[]);
