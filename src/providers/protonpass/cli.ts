@@ -6,7 +6,7 @@
 import { Platform } from "obsidian";
 
 import { t } from "../../i18n";
-import { ProtonPassError } from "./errors";
+import { ProtonPassError, errorMessage } from "./errors";
 
 const TIMEOUT_MS = 10_000;
 
@@ -33,11 +33,19 @@ const requireNode = <T>(id: string): T => {
   return req(id) as T;
 };
 
-/** Promisified `child_process.execFile`, loaded on first use. */
+/**
+ * Promisified `child_process.execFile`, loaded on first use.
+ *
+ * @throws {ProtonPassError} "unavailable" if Node's modules can't be loaded.
+ */
 const loadExecFile = () => {
-  const { execFile } = requireNode<typeof import("child_process")>("child_process");
-  const { promisify } = requireNode<typeof import("util")>("util");
-  return promisify(execFile);
+  try {
+    const { execFile } = requireNode<typeof import("child_process")>("child_process");
+    const { promisify } = requireNode<typeof import("util")>("util");
+    return promisify(execFile);
+  } catch (e) {
+    throw new ProtonPassError("unavailable", errorMessage(e));
+  }
 };
 
 /** ANSI colour escapes. pass-cli colours its log lines, so strip them before showing one. */
@@ -117,13 +125,7 @@ export const runPassCli = async (
     throw new ProtonPassError("unavailable", t("provider.protonpass.invalidBinary"));
   }
 
-  let execFile: ReturnType<typeof loadExecFile>;
-  try {
-    execFile = loadExecFile();
-  } catch (e) {
-    throw new ProtonPassError("unavailable", e instanceof Error ? e.message : String(e));
-  }
-
+  const execFile = loadExecFile();
   try {
     const { stdout } = await execFile(bin, args, {
       shell: false,

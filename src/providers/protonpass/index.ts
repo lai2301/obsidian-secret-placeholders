@@ -30,7 +30,7 @@ import {
   ProviderAuthStatus,
   ProviderRef,
 } from "../types";
-import { ProtonPassError } from "./errors";
+import { ProtonPassError, errorMessage } from "./errors";
 import {
   PLACEHOLDER_RE,
   PREFIX,
@@ -99,7 +99,7 @@ export class ProtonPassProvider implements Provider {
       try {
         await repo.logout(this.#settings.binaryPath);
       } catch (e) {
-        new Notice(e instanceof Error ? e.message : String(e));
+        new Notice(errorMessage(e));
       }
       this.clearCache();
       this.#ctx.notifyAuthChanged(this.id);
