@@ -113,11 +113,23 @@ export const updateField = async (
 };
 
 /**
+ * The title in `titles` that `item` refers to. References match titles
+ * case-insensitively, like the other providers, but an exact match wins so
+ * titles differing only in case stay reachable.
+ */
+const findTitle = (titles: readonly string[], item: string): string | undefined => {
+  const folded = item.toLowerCase();
+  return titles.find((title) => title === item) ?? titles.find((title) => title.toLowerCase() === folded);
+};
+
+/**
  * Set `field` on the item titled `item` in `vault` to `value`, first creating
  * the item as an empty note if `vault` has no item with that title.
  *
- * The titles come straight from pass-cli, never a cache, so a stale listing
- * can't turn an update into a duplicate item. An unlistable vault (see
+ * An existing item is updated under its stored title, so a reference typed
+ * in another case updates it rather than creating a duplicate. The titles
+ * come straight from pass-cli, never a cache, so a stale listing can't turn
+ * an update into a duplicate item either. An unlistable vault (see
  * {@link isUnlistableVault}) is refused rather than getting a new note on
  * every save.
  */
@@ -130,12 +142,13 @@ export const upsertField = async (
     throw new ProtonPassError("unknown", t("provider.protonpass.dashVault", { vault: parts.vault }));
   }
 
-  const titles = await listItemTitles(bin, parts.vault);
-  if (!titles.includes(parts.item)) {
+  const existing = findTitle(await listItemTitles(bin, parts.vault), parts.item);
+  if (existing === undefined) {
     await createEmptyNote(bin, parts.vault, parts.item);
+    await updateField(bin, parts, value);
+  } else {
+    await updateField(bin, { ...parts, item: existing }, value);
   }
-
-  await updateField(bin, parts, value);
 };
 
 /** End the pass-cli session. */
