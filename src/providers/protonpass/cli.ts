@@ -69,8 +69,7 @@ function matchesAny(patterns: RegExp[], s: string): boolean {
 function classifyStderr(stderr: string): ProtonPassError {
   if (matchesAny(AUTH_PATTERNS, stderr)) {
     return new ProtonPassError("not-logged-in", t("provider.protonpass.notLoggedIn"));
-  }
-  if (matchesAny(NOT_FOUND_PATTERNS, stderr)) {
+  } else if (matchesAny(NOT_FOUND_PATTERNS, stderr)) {
     // The useful line ("Could not find item ...") is the last cause, not
     // the first line.
     const cause =
@@ -79,8 +78,9 @@ function classifyStderr(stderr: string): ProtonPassError {
         .reverse()
         .find((l) => matchesAny(NOT_FOUND_PATTERNS, l)) ?? stderr;
     return new ProtonPassError("not-found", firstLine(cause.replace(/^\s*\d+:\s*/, "")));
+  } else {
+    return new ProtonPassError("unknown", firstLine(stderr) || "pass-cli failed");
   }
-  return new ProtonPassError("unknown", firstLine(stderr) || "pass-cli failed");
 }
 
 export class PassCli {
@@ -109,17 +109,19 @@ export class PassCli {
             encoding: "utf8",
           },
           (err, stdout, stderr) => {
-            if (!err) return resolve(stdout);
-            if (err.code === "ENOENT" || err.code === "EACCES") {
-              return reject(
+            if (!err) {
+              resolve(stdout);
+            } else if (err.code === "ENOENT" || err.code === "EACCES") {
+              reject(
                 new ProtonPassError("unavailable", t("provider.protonpass.binaryNotFound", { path: bin })),
               );
+            } else if (err.killed) {
+              reject(new ProtonPassError("unknown", "pass-cli timed out"));
+            } else if (typeof err.code === "number") {
+              reject(classifyStderr(stderr));
+            } else {
+              reject(new ProtonPassError("unknown", String(err.code ?? err.message)));
             }
-            if (err.killed) {
-              return reject(new ProtonPassError("unknown", "pass-cli timed out"));
-            }
-            if (typeof err.code === "number") return reject(classifyStderr(stderr));
-            reject(new ProtonPassError("unknown", String(err.code ?? err.message)));
           },
         );
       } catch (e) {

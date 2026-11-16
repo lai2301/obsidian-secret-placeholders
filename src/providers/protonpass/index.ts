@@ -129,8 +129,11 @@ export class ProtonPassProvider implements Provider {
     const m = new RegExp(PLACEHOLDER_RE.source).exec(raw);
     if (!m) return null;
     const parts = { vault: m[1], item: m[2], field: m[3] };
-    if (!toPassRef(parts)) return null;
-    return { provider: this.id, raw: m[0], parts };
+    if (toPassRef(parts)) {
+      return { provider: this.id, raw: m[0], parts };
+    } else {
+      return null;
+    }
   }
 
   formatRef(parts: Record<string, string>): string {

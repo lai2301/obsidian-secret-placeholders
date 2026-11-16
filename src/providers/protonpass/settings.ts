@@ -11,9 +11,13 @@ export interface ProtonPassSettings {
 }
 
 export function defaultBinaryPath(): string {
-  if (Platform.isWin) return "C:\\Program Files\\Proton\\Pass CLI\\pass-cli.exe";
-  if (Platform.isMacOS) return "/opt/homebrew/bin/pass-cli";
-  return "/usr/local/bin/pass-cli";
+  if (Platform.isWin) {
+    return "C:\\Program Files\\Proton\\Pass CLI\\pass-cli.exe";
+  } else if (Platform.isMacOS) {
+    return "/opt/homebrew/bin/pass-cli";
+  } else {
+    return "/usr/local/bin/pass-cli";
+  }
 }
 
 export const DEFAULTS: ProtonPassSettings = {
