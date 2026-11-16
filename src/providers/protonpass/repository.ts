@@ -11,7 +11,7 @@ import { t } from "../../i18n";
 import { runPassCli } from "./cli";
 import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
-import { PassRefParts, toPassRef } from "./ref";
+import { PassReferenceParts, toPassReference } from "./references";
 
 /** Output cap for commands that print one field, such as `item view`. */
 const VIEW_MAX_BUFFER = 64 * 1024;
@@ -19,8 +19,8 @@ const VIEW_MAX_BUFFER = 64 * 1024;
 const LIST_MAX_BUFFER = 8 * 1024 * 1024;
 
 /** Read one secret field by its `pass://` reference. */
-export const readSecret = async (bin: string, passRef: string): Promise<string> => {
-  const stdout = await runPassCli(bin, ["item", "view", passRef], VIEW_MAX_BUFFER);
+export const readSecret = async (bin: string, passReference: string): Promise<string> => {
+  const stdout = await runPassCli(bin, ["item", "view", passReference], VIEW_MAX_BUFFER);
   // Strip exactly one trailing newline, because secrets may end in spaces.
   return stdout.replace(/\r?\n$/, "");
 };
@@ -49,14 +49,15 @@ export const listItemTitles = async (bin: string, vault: string): Promise<string
 };
 
 /**
- * Ref parts for the active items in `vaults`, or in every vault the session
- * can see when `vaults` is omitted. A vault whose items fail to load is
- * skipped, and items that can't form a valid `pass://` reference are dropped.
+ * Reference parts for the active items in `vaults`, or in every vault the
+ * session can see when `vaults` is omitted. A vault whose items fail to load
+ * is skipped, and items that can't form a valid `pass://` reference are
+ * dropped.
  */
 export const listItemReferences = async (
   bin: string,
   vaults?: readonly string[],
-): Promise<PassRefParts[]> => {
+): Promise<PassReferenceParts[]> => {
   const targets = vaults ?? (await listVaultNames(bin));
   const partsByVault = await Promise.all(
     targets.map(async (vault) => {
@@ -67,7 +68,7 @@ export const listItemReferences = async (
       return titles.map((item) => ({ vault, item, field: "password" }));
     }),
   );
-  return partsByVault.flat().filter((parts) => toPassRef(parts) !== null);
+  return partsByVault.flat().filter((parts) => toPassReference(parts) !== null);
 };
 
 /** Create an empty note item titled `title` in `vault`, and resolve to its share ID. */
@@ -90,7 +91,7 @@ export const createEmptyNote = async (bin: string, vault: string, title: string)
  */
 export const updateField = async (
   bin: string,
-  { vault, item, field }: PassRefParts,
+  { vault, item, field }: PassReferenceParts,
   value: string,
 ): Promise<void> => {
   if (field.includes("=")) {
@@ -122,7 +123,7 @@ export const updateField = async (
  */
 export const upsertField = async (
   bin: string,
-  parts: PassRefParts,
+  parts: PassReferenceParts,
   value: string,
 ): Promise<void> => {
   if (isUnlistableVault(parts.vault)) {

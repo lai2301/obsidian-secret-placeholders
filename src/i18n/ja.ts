@@ -225,7 +225,7 @@ export const ja: Messages = {
   "provider.protonpass.notLoggedIn": "Proton Pass にログインしていません（`pass-cli login` を実行してください）",
   "provider.protonpass.invalidBinary": "pass-cli のパスは絶対パスで、pass-cli で終わる必要があります。プラグイン設定を確認してください。",
   "provider.protonpass.binaryNotFound": "{path} に pass-cli が見つからないか、実行できません",
-  "provider.protonpass.invalidRef": "無効な Proton Pass 参照です",
+  "provider.protonpass.invalidReference": "無効な Proton Pass 参照です",
   "provider.protonpass.equalsInField": "フィールド名に「=」は使用できません：{field}",
   "provider.protonpass.dashVault": "保管庫「{vault}」に保存できません：「-」で始まる名前には対応していません",
   "provider.protonpass.binaryPath.name": "pass-cli のパス",

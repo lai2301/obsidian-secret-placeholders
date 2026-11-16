@@ -226,7 +226,7 @@ export const it: Messages = {
   "provider.protonpass.notLoggedIn": "Accesso a Proton Pass non effettuato (esegui `pass-cli login`)",
   "provider.protonpass.invalidBinary": "Il percorso di pass-cli deve essere assoluto e terminare con pass-cli. Controlla le impostazioni del plugin.",
   "provider.protonpass.binaryNotFound": "pass-cli non trovato o non eseguibile in {path}",
-  "provider.protonpass.invalidRef": "Riferimento Proton Pass non valido",
+  "provider.protonpass.invalidReference": "Riferimento Proton Pass non valido",
   "provider.protonpass.equalsInField": "I nomi dei campi non possono contenere \"=\": {field}",
   "provider.protonpass.dashVault": "Impossibile salvare nella cassaforte \"{vault}\": i nomi che iniziano con \"-\" non sono supportati",
   "provider.protonpass.binaryPath.name": "Percorso di pass-cli",

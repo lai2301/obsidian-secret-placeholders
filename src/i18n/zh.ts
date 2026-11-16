@@ -225,7 +225,7 @@ export const zh: Messages = {
   "provider.protonpass.notLoggedIn": "未登录 Proton Pass（请运行 `pass-cli login`）",
   "provider.protonpass.invalidBinary": "pass-cli 路径必须为绝对路径且以 pass-cli 结尾。请检查插件设置。",
   "provider.protonpass.binaryNotFound": "在 {path} 未找到 pass-cli 或其不可执行",
-  "provider.protonpass.invalidRef": "无效的 Proton Pass 引用",
+  "provider.protonpass.invalidReference": "无效的 Proton Pass 引用",
   "provider.protonpass.equalsInField": "字段名称不能包含“=”：{field}",
   "provider.protonpass.dashVault": "无法保存到保险库“{vault}”：不支持以“-”开头的名称",
   "provider.protonpass.binaryPath.name": "pass-cli 路径",

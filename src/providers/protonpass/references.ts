@@ -10,7 +10,7 @@
 export const PREFIX = "pp:";
 
 /** The three segments of a Proton Pass reference. */
-export type PassRefParts = { vault: string; item: string; field: string };
+export type PassReferenceParts = { vault: string; item: string; field: string };
 
 /**
  * Characters no segment may hold. `/` and `#` separate segments, and `/`
@@ -34,10 +34,10 @@ const RESERVED_RE = new RegExp(`[${RESERVED}]`);
 const hasControlChars = (s: string): boolean => /\p{Cc}/u.test(s);
 
 /**
- * Read the parts out of a provider-interface ref, which only promises a
- * string record.
+ * Read the parts out of a provider-interface reference, which only
+ * promises a string record.
  */
-export const fromRecord = (parts: Record<string, string>): PassRefParts => ({
+export const fromRecord = (parts: Record<string, string>): PassReferenceParts => ({
   vault: parts.vault ?? "",
   item: parts.item ?? "",
   field: parts.field ?? "",
@@ -48,11 +48,11 @@ export const fromRecord = (parts: Record<string, string>): PassRefParts => ({
  * hand to pass-cli.
  *
  * Every segment must be nonempty and free of control characters and
- * {@link RESERVED} characters, matching {@link PLACEHOLDER_RE}. So a ref
- * built here always round-trips through {@link formatPlaceholder} and
- * {@link parsePlaceholder}.
+ * {@link RESERVED} characters, matching {@link PLACEHOLDER_RE}. So a
+ * reference built here always round-trips through {@link formatPlaceholder}
+ * and {@link parsePlaceholder}.
  */
-export const toPassRef = (parts: PassRefParts): string | null => {
+export const toPassReference = (parts: PassReferenceParts): string | null => {
   const segments = [parts.vault, parts.item, parts.field];
   if (segments.some((s) => !s || RESERVED_RE.test(s) || hasControlChars(s))) {
     return null;
@@ -62,7 +62,7 @@ export const toPassRef = (parts: PassRefParts): string | null => {
 };
 
 /** Render `parts` as a `{{pp:...}}` placeholder. */
-export const formatPlaceholder = ({ vault, item, field }: PassRefParts): string =>
+export const formatPlaceholder = ({ vault, item, field }: PassReferenceParts): string =>
   `{{${PREFIX}${vault}/${item}#${field}}}`;
 
 /**
@@ -71,12 +71,12 @@ export const formatPlaceholder = ({ vault, item, field }: PassRefParts): string 
  */
 export const parsePlaceholder = (
   raw: string,
-): { raw: string; parts: PassRefParts } | null => {
+): { raw: string; parts: PassReferenceParts } | null => {
   const m = new RegExp(PLACEHOLDER_RE.source).exec(raw);
   if (!m?.groups) return null;
 
   const parts = fromRecord(m.groups);
-  if (toPassRef(parts)) {
+  if (toPassReference(parts)) {
     return { raw: m[0], parts };
   } else {
     return null;

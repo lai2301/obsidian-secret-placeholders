@@ -13,8 +13,8 @@
  *
  * Security notes:
  * - The binary path comes from plugin settings only, never note content.
- * - The process runs without a shell, so a ref is always a single argv
- *   element and spaces or shell metacharacters are inert.
+ * - The process runs without a shell, so a reference is always a single
+ *   argv element and spaces or shell metacharacters are inert.
  * - Errors surface stderr only, never stdout, which may hold a secret.
  * - pass-cli takes a value being saved as an argument, so other processes
  *   run by the same user can see it while the command runs.
@@ -35,17 +35,17 @@ import {
 import { ProtonPassError, errorMessage } from "./errors";
 import {
   PLACEHOLDER_RE,
-  PassRefParts,
+  PassReferenceParts,
   PREFIX,
   formatPlaceholder,
   fromRecord,
   parsePlaceholder,
-  toPassRef,
-} from "./ref";
+  toPassReference,
+} from "./references";
 import * as repo from "./repository";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
-/** Upper bound on refs returned by {@link ProtonPassProvider.list}. */
+/** Upper bound on references returned by {@link ProtonPassProvider.list}. */
 const MAX_LIST_ITEMS = 500;
 
 const slugify = (s: string): string =>
@@ -60,13 +60,13 @@ const slugify = (s: string): string =>
  *
  * @throws {ProtonPassError} "not-found" if the parts can't form a valid reference.
  */
-const requirePassRef = (parts: PassRefParts): string => {
-  const passRef = toPassRef(parts);
-  if (!passRef) {
-    throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
+const requirePassReference = (parts: PassReferenceParts): string => {
+  const passReference = toPassReference(parts);
+  if (!passReference) {
+    throw new ProtonPassError("not-found", t("provider.protonpass.invalidReference"));
   }
 
-  return passRef;
+  return passReference;
 };
 
 export class ProtonPassProvider implements Provider {
@@ -79,9 +79,9 @@ export class ProtonPassProvider implements Provider {
   #settings: ProtonPassSettings = { ...DEFAULTS };
   /**
    * In-flight and settled lookups keyed by command. Storing promises lets
-   * concurrent reads of one ref share a single pass-cli call. Failures are
-   * dropped once they settle. Each key ("view:<ref>", "vaults", "list")
-   * always stores the same result type.
+   * concurrent reads of one reference share a single pass-cli call.
+   * Failures are dropped once they settle. Each key ("view:<reference>",
+   * "vaults", "list") always stores the same result type.
    */
   readonly #cache = new Map<string, { expires: number; value: Promise<unknown> }>();
   readonly #listeners = new Set<() => void>();
@@ -192,23 +192,23 @@ export class ProtonPassProvider implements Provider {
     }
   }
 
-  async readKey(ref: ProviderRef): Promise<string> {
-    const passRef = requirePassRef(fromRecord(ref.parts));
-    return this.#cached(`view:${passRef}`, () =>
-      repo.readSecret(this.#settings.binaryPath, passRef),
+  async readKey(reference: ProviderRef): Promise<string> {
+    const passReference = requirePassReference(fromRecord(reference.parts));
+    return this.#cached(`view:${passReference}`, () =>
+      repo.readSecret(this.#settings.binaryPath, passReference),
     );
   }
 
-  /** Set the secret at `ref` to `value`, creating the item if needed. */
-  async writeKey(ref: ProviderRef, value: string): Promise<void> {
-    const parts = fromRecord(ref.parts);
-    const passRef = requirePassRef(parts);
+  /** Set the secret at `reference` to `value`, creating the item if needed. */
+  async writeKey(reference: ProviderRef, value: string): Promise<void> {
+    const parts = fromRecord(reference.parts);
+    const passReference = requirePassReference(parts);
     try {
       await repo.upsertField(this.#settings.binaryPath, parts, value);
     } finally {
       // A failed upsert may still have created the item, so drop these
       // either way.
-      this.#cache.delete(`view:${passRef}`);
+      this.#cache.delete(`view:${passReference}`);
       this.#cache.delete("list");
     }
   }

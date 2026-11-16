@@ -225,7 +225,7 @@ export const ko: Messages = {
   "provider.protonpass.notLoggedIn": "Proton Pass에 로그인되어 있지 않습니다 (`pass-cli login` 실행)",
   "provider.protonpass.invalidBinary": "pass-cli 경로는 절대 경로여야 하며 pass-cli로 끝나야 합니다. 플러그인 설정을 확인하세요.",
   "provider.protonpass.binaryNotFound": "{path}에서 pass-cli를 찾을 수 없거나 실행할 수 없습니다",
-  "provider.protonpass.invalidRef": "잘못된 Proton Pass 참조",
+  "provider.protonpass.invalidReference": "잘못된 Proton Pass 참조",
   "provider.protonpass.equalsInField": "필드 이름에는 \"=\"를 사용할 수 없습니다: {field}",
   "provider.protonpass.dashVault": "보관함 \"{vault}\"에 저장할 수 없습니다: \"-\"로 시작하는 이름은 지원되지 않습니다",
   "provider.protonpass.binaryPath.name": "pass-cli 경로",
