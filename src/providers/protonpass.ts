@@ -261,11 +261,13 @@ function parseJson(stdout: string): unknown {
 // --- provider ------------------------------------------------------------
 
 /** A pass:// reference is safe to hand to pass-cli when every segment is
- *  non-empty, `/`-free and free of control characters. */
+ *  non-empty and free of control characters.  Segments also can't hold
+ *  `/`, `{` or `}`, matching PLACEHOLDER_RE, so a ref built here always
+ *  round-trips through formatRef and parseRef. */
 function toPassRef(parts: Record<string, string>): string | null {
   const segs = [parts.vault, parts.item, parts.field];
   for (const s of segs) {
-    if (!s || s.includes("/") || hasControlChars(s)) return null;
+    if (!s || /[/{}]/.test(s) || hasControlChars(s)) return null;
   }
   return `pass://${segs.join("/")}`;
 }
