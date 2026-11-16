@@ -1,0 +1,140 @@
+// Runs the pass-cli binary and turns its failures into ProtonPassErrors.
+// Desktop only: spawning a process needs Node's child_process.
+
+import { Platform } from "obsidian";
+
+import { t } from "../../i18n";
+
+const TIMEOUT_MS = 10_000;
+
+// Derived from recorded pass-cli 2.7 stderr. Don't guess these.
+const AUTH_PATTERNS = [/requires an authenticated client/, /there is no session/];
+const NOT_FOUND_PATTERNS = [
+  /Could not find vault /,
+  /Could not find item /,
+  /Field does not exist: /,
+];
+
+interface ExecError extends Error {
+  code?: string | number;
+  killed?: boolean;
+}
+
+interface NodeChildProcess {
+  execFile(
+    file: string,
+    args: string[],
+    options: {
+      shell: false;
+      timeout: number;
+      maxBuffer: number;
+      windowsHide: boolean;
+      encoding: "utf8";
+    },
+    callback: (err: ExecError | null, stdout: string, stderr: string) => void,
+  ): void;
+}
+
+// Node interop is desktop-only and reached through Electron's require().
+function requireNode<T>(id: string): T {
+  const req = (window as unknown as { require: (id: string) => unknown })
+    .require;
+  return req(id) as T;
+}
+
+type FailureKind = "unavailable" | "not-logged-in" | "not-found" | "unknown";
+
+export class ProtonPassError extends Error {
+  constructor(
+    readonly kind: FailureKind,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+// pass-cli colours its log lines; strip ANSI escapes before matching or
+// showing them.
+function firstLine(stderr: string): string {
+  // eslint-disable-next-line no-control-regex -- matching ESC is the point
+  const plain = stderr.replace(/\u001b\[[0-9;]*m/g, "");
+  const line = plain.split(/\r?\n/).find((l) => l.trim() !== "") ?? "";
+  return line.trim().slice(0, 200);
+}
+
+function matchesAny(patterns: RegExp[], s: string): boolean {
+  return patterns.some((p) => p.test(s));
+}
+
+function classifyStderr(stderr: string): ProtonPassError {
+  if (matchesAny(AUTH_PATTERNS, stderr)) {
+    return new ProtonPassError("not-logged-in", t("provider.protonpass.notLoggedIn"));
+  }
+  if (matchesAny(NOT_FOUND_PATTERNS, stderr)) {
+    // The useful line ("Could not find item ...") is the last cause, not
+    // the first line.
+    const cause =
+      stderr
+        .split(/\r?\n/)
+        .reverse()
+        .find((l) => matchesAny(NOT_FOUND_PATTERNS, l)) ?? stderr;
+    return new ProtonPassError("not-found", firstLine(cause.replace(/^\s*\d+:\s*/, "")));
+  }
+  return new ProtonPassError("unknown", firstLine(stderr) || "pass-cli failed");
+}
+
+export class PassCli {
+  constructor(private getBinaryPath: () => string) { }
+
+  /** Run pass-cli with argv and resolve to stdout.  Rejects with a
+   *  ProtonPassError whose message never contains stdout. */
+  run(args: string[], maxBuffer: number): Promise<string> {
+    const bin = this.getBinaryPath();
+    if (!isValidBinaryPath(bin)) {
+      return Promise.reject(
+        new ProtonPassError("unavailable", t("provider.protonpass.invalidBinary")),
+      );
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        const cp = requireNode<NodeChildProcess>("child_process");
+        cp.execFile(
+          bin,
+          args,
+          {
+            shell: false,
+            timeout: TIMEOUT_MS,
+            maxBuffer,
+            windowsHide: true,
+            encoding: "utf8",
+          },
+          (err, stdout, stderr) => {
+            if (!err) return resolve(stdout);
+            if (err.code === "ENOENT" || err.code === "EACCES") {
+              return reject(
+                new ProtonPassError("unavailable", t("provider.protonpass.binaryNotFound", { path: bin })),
+              );
+            }
+            if (err.killed) {
+              return reject(new ProtonPassError("unknown", "pass-cli timed out"));
+            }
+            if (typeof err.code === "number") return reject(classifyStderr(stderr));
+            reject(new ProtonPassError("unknown", String(err.code ?? err.message)));
+          },
+        );
+      } catch (e) {
+        reject(new ProtonPassError("unavailable", (e as Error).message));
+      }
+    });
+  }
+}
+
+/** Absolute path whose file name is pass-cli itself, so settings can't be
+ *  pointed at an arbitrary program by accident. */
+function isValidBinaryPath(p: string): boolean {
+  if (!p || p.includes("\u0000")) return false;
+  const absolute = Platform.isWin ? /^[A-Za-z]:[\\/]|^\\\\/.test(p) : p.startsWith("/");
+  const name = p.split(/[\\/]/).pop() ?? "";
+  const allowed = Platform.isWin ? ["pass-cli.exe", "pass-cli"] : ["pass-cli"];
+  return absolute && allowed.includes(name);
+}
