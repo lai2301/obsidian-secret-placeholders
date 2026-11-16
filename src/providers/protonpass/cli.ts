@@ -101,7 +101,7 @@ const classifyStderr = (stderr: string): ProtonPassError => {
   } else {
     // pass-cli may log timestamped lines before its "Error: ..." summary.
     const summary = lines.find((l) => l.startsWith("Error:")) ?? lines[0] ?? "";
-    return new ProtonPassError("unknown", cleanLine(summary) || "pass-cli failed");
+    return new ProtonPassError("unknown", cleanLine(summary) || t("provider.protonpass.failed"));
   }
 };
 
@@ -116,11 +116,15 @@ const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   if (e.code === "ENOENT" || e.code === "EACCES") {
     return new ProtonPassError("unavailable", t("provider.protonpass.binaryNotFound", { path: bin }));
   } else if (e.killed) {
-    return new ProtonPassError("unknown", "pass-cli timed out");
+    return new ProtonPassError("unknown", t("provider.protonpass.timedOut"));
   } else if (typeof e.code === "number") {
     return classifyStderr(e.stderr ?? "");
   } else {
-    return new ProtonPassError("unknown", `pass-cli failed (${e.code ?? e.signal ?? "no exit code"})`);
+    const reason = e.code ?? e.signal;
+    return new ProtonPassError(
+      "unknown",
+      reason == null ? t("provider.protonpass.failed") : t("provider.protonpass.failedWithReason", { reason }),
+    );
   }
 };
 
