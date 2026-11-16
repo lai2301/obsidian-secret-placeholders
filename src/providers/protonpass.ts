@@ -213,48 +213,56 @@ function isValidBinaryPath(p: string): boolean {
 }
 
 // --- JSON shapes ---------------------------------------------------------
-// pass-cli's --output json shape isn't documented as stable, so read it
-// defensively: accept a bare array or an object wrapping one.
 
 type Json = Record<string, unknown>;
+
+function unexpectedOutput(): ProtonPassError {
+  return new ProtonPassError("unknown", "pass-cli returned unexpected output");
+}
 
 function isObject(v: unknown): v is Json {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-function arrayIn(json: unknown, key: string): unknown[] {
-  if (Array.isArray(json)) return json;
-  if (isObject(json) && Array.isArray(json[key])) return json[key] as unknown[];
-  return [];
-}
-
-function stringAt(obj: unknown, ...path: string[]): string | null {
-  let cur: unknown = obj;
-  for (const k of path) {
-    if (!isObject(cur)) return null;
-    cur = cur[k];
-  }
-  return typeof cur === "string" ? cur : null;
+// pass-cli 2.7 `vault list --output json`:
+//   { "vaults": [{ "name": string, "vault_id": string, "share_id": string }] }
+function toVaultName(v: unknown): string {
+  if (!isObject(v) || typeof v.name !== "string") throw unexpectedOutput();
+  return v.name;
 }
 
 function vaultNames(json: unknown): string[] {
-  return arrayIn(json, "vaults")
-    .map((v) => stringAt(v, "name"))
-    .filter((n): n is string => !!n);
+  if (!isObject(json) || !Array.isArray(json.vaults)) throw unexpectedOutput();
+  return json.vaults.map(toVaultName);
+}
+
+// pass-cli 2.7 `item list --output json`:
+//   { "items": [{ "title": string, "state": "Active" | ..., ... }], "folders": [] }
+interface ListedItem {
+  title: string;
+  state: string;
+}
+
+function toListedItem(v: unknown): ListedItem {
+  if (!isObject(v) || typeof v.title !== "string" || typeof v.state !== "string") {
+    throw unexpectedOutput();
+  }
+  return { title: v.title, state: v.state };
 }
 
 function itemTitles(json: unknown): string[] {
-  return arrayIn(json, "items")
-    .filter((it) => !/trash/i.test(stringAt(it, "state") ?? ""))
-    .map((it) => stringAt(it, "title") ?? stringAt(it, "content", "title"))
-    .filter((n): n is string => !!n);
+  if (!isObject(json) || !Array.isArray(json.items)) throw unexpectedOutput();
+  return json.items
+    .map(toListedItem)
+    .filter((it) => it.state === "Active")
+    .map((it) => it.title);
 }
 
 function parseJson(stdout: string): unknown {
   try {
     return JSON.parse(stdout) as unknown;
   } catch {
-    throw new ProtonPassError("unknown", "pass-cli returned unexpected output");
+    throw unexpectedOutput();
   }
 }
 
@@ -427,7 +435,7 @@ export class ProtonPassProvider implements Provider {
         // Listing doesn't tell us which fields an item has without fetching
         // each one, so surface nothing so the user can edit the placeholder
         // themselves.
-        return titles.map((item) => ({ vault, item, field: "" }));
+        return titles.map((item) => ({ vault, item, field: "password" }));
       }),
     );
     return partsByVault
