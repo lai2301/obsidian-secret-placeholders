@@ -10,7 +10,7 @@ export interface ProtonPassSettings {
   cacheTtlSec: number;
 }
 
-export function defaultBinaryPath(): string {
+export const defaultBinaryPath = (): string => {
   if (Platform.isWin) {
     return "C:\\Program Files\\Proton\\Pass CLI\\pass-cli.exe";
   } else if (Platform.isMacOS) {
@@ -18,7 +18,7 @@ export function defaultBinaryPath(): string {
   } else {
     return "/usr/local/bin/pass-cli";
   }
-}
+};
 
 export const DEFAULTS: ProtonPassSettings = {
   binaryPath: "",

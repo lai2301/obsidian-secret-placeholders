@@ -36,11 +36,11 @@ interface NodeChildProcess {
 }
 
 // Node interop is desktop-only and reached through Electron's require().
-function requireNode<T>(id: string): T {
+const requireNode = <T>(id: string): T => {
   const req = (window as unknown as { require: (id: string) => unknown })
     .require;
   return req(id) as T;
-}
+};
 
 type FailureKind = "unavailable" | "not-logged-in" | "not-found" | "unknown";
 
@@ -59,15 +59,15 @@ const ANSI_RE = /\u001b\[[0-9;]*m/g;
 
 /** Tidy one stderr line for display: drop the "Error:" or numbered-cause
  *  ("1:") prefix and cap the length. */
-function cleanLine(line: string): string {
+const cleanLine = (line: string): string => {
   return line.trim().replace(/^(Error:|\d+:)\s*/, "").slice(0, 200);
-}
+};
 
-function matchesAny(patterns: RegExp[], s: string): boolean {
+const matchesAny = (patterns: RegExp[], s: string): boolean => {
   return patterns.some((p) => p.test(s));
-}
+};
 
-function classifyStderr(stderr: string): ProtonPassError {
+const classifyStderr = (stderr: string): ProtonPassError => {
   const lines = stderr
     .replace(ANSI_RE, "")
     .split(/\r?\n/)
@@ -85,7 +85,7 @@ function classifyStderr(stderr: string): ProtonPassError {
     const summary = lines.find((l) => l.startsWith("Error:")) ?? lines[0] ?? "";
     return new ProtonPassError("unknown", cleanLine(summary) || "pass-cli failed");
   }
-}
+};
 
 export class PassCli {
   constructor(private getBinaryPath: () => string) { }
@@ -137,10 +137,10 @@ export class PassCli {
 
 /** Absolute path whose file name is pass-cli itself, so settings can't be
  *  pointed at an arbitrary program by accident. */
-function isValidBinaryPath(p: string): boolean {
+const isValidBinaryPath = (p: string): boolean => {
   if (!p || p.includes("\u0000")) return false;
   const absolute = Platform.isWin ? /^[A-Za-z]:[\\/]|^\\\\/.test(p) : p.startsWith("/");
   const name = p.split(/[\\/]/).pop() ?? "";
   const allowed = Platform.isWin ? ["pass-cli.exe", "pass-cli"] : ["pass-cli"];
   return absolute && allowed.includes(name);
-}
+};

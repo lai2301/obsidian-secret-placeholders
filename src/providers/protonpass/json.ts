@@ -5,25 +5,25 @@ import { ProtonPassError } from "./cli";
 
 type Json = Record<string, unknown>;
 
-function unexpectedOutput(): ProtonPassError {
+const unexpectedOutput = (): ProtonPassError => {
   return new ProtonPassError("unknown", "pass-cli returned unexpected output");
-}
+};
 
-function isObject(v: unknown): v is Json {
+const isObject = (v: unknown): v is Json => {
   return typeof v === "object" && v !== null && !Array.isArray(v);
-}
+};
 
 // pass-cli 2.7 `vault list --output json`:
 //   { "vaults": [{ "name": string, "vault_id": string, "share_id": string }] }
-function toVaultName(v: unknown): string {
+const toVaultName = (v: unknown): string => {
   if (!isObject(v) || typeof v.name !== "string") throw unexpectedOutput();
   return v.name;
-}
+};
 
-export function vaultNames(json: unknown): string[] {
+export const vaultNames = (json: unknown): string[] => {
   if (!isObject(json) || !Array.isArray(json.vaults)) throw unexpectedOutput();
   return json.vaults.map(toVaultName);
-}
+};
 
 // pass-cli 2.7 `item list --output json`:
 //   { "items": [{ "title": string, "state": "Active" | ..., ... }], "folders": [] }
@@ -32,25 +32,25 @@ interface ListedItem {
   state: string;
 }
 
-function toListedItem(v: unknown): ListedItem {
+const toListedItem = (v: unknown): ListedItem => {
   if (!isObject(v) || typeof v.title !== "string" || typeof v.state !== "string") {
     throw unexpectedOutput();
   }
   return { title: v.title, state: v.state };
-}
+};
 
-export function itemTitles(json: unknown): string[] {
+export const itemTitles = (json: unknown): string[] => {
   if (!isObject(json) || !Array.isArray(json.items)) throw unexpectedOutput();
   return json.items
     .map(toListedItem)
     .filter((it) => it.state === "Active")
     .map((it) => it.title);
-}
+};
 
-export function parseJson(stdout: string): unknown {
+export const parseJson = (stdout: string): unknown => {
   try {
     return JSON.parse(stdout) as unknown;
   } catch {
     throw unexpectedOutput();
   }
-}
+};

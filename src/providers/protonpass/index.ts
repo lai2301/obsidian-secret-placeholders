@@ -38,13 +38,13 @@ const VIEW_MAX_BUFFER = 64 * 1024;
 const LIST_MAX_BUFFER = 8 * 1024 * 1024;
 const MAX_LIST_ITEMS = 500;
 
-function slugify(s: string): string {
+const slugify = (s: string): string => {
   return s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-}
+};
 
 export class ProtonPassProvider implements Provider {
   readonly id = "pp";
