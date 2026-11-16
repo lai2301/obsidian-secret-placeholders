@@ -1,7 +1,7 @@
 // Global plugin settings (UX-level).  Per-provider settings are owned by
 // the provider and rendered into the same tab via provider.renderSettings().
 
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Platform, PluginSettingTab, Setting } from "obsidian";
 import type SecretPlaceholdersPlugin from "./main";
 import { t, setLocale, languageOptions, type Lang } from "./i18n";
 
@@ -150,6 +150,9 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
     for (const id of Object.keys(this.plugin.settings.enabledProviders)) {
       knownIds.add(id);
     }
+    // Proton Pass needs a local pass-cli process, so it is never registered
+    // on mobile and a toggle there would do nothing.
+    if (!Platform.isDesktopApp) knownIds.delete("pp");
     const displayNames: Record<string, string> = {
       bao: "OpenBao / Vault",
       "1p": "1Password Connect",
