@@ -11,7 +11,7 @@ import { t } from "../../i18n";
 import { runPassCli } from "./cli";
 import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
-import { PassRefParts } from "./ref";
+import { PassRefParts, toPassRef } from "./ref";
 
 /** Output cap for commands that print one field, such as `item view`. */
 const VIEW_MAX_BUFFER = 64 * 1024;
@@ -46,6 +46,28 @@ export const listItemTitles = async (bin: string, vault: string): Promise<string
 
   const stdout = await runPassCli(bin, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
   return itemTitles(parseJson(stdout));
+};
+
+/**
+ * Ref parts for the active items in `vaults`, or in every vault the session
+ * can see when `vaults` is omitted. A vault whose items fail to load is
+ * skipped, and items that can't form a valid `pass://` reference are dropped.
+ */
+export const listItemReferences = async (
+  bin: string,
+  vaults?: readonly string[],
+): Promise<PassRefParts[]> => {
+  const targets = vaults ?? (await listVaultNames(bin));
+  const partsByVault = await Promise.all(
+    targets.map(async (vault) => {
+      const titles = await listItemTitles(bin, vault).catch((): string[] => []);
+      // Listing doesn't say which fields an item has without fetching each
+      // one, so offer the conventional "password" field. The user can edit
+      // the placeholder to point elsewhere.
+      return titles.map((item) => ({ vault, item, field: "password" }));
+    }),
+  );
+  return partsByVault.flat().filter((parts) => toPassRef(parts) !== null);
 };
 
 /** Create an empty note item titled `title` in `vault`, and resolve to its share ID. */

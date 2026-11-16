@@ -80,7 +80,7 @@ export class ProtonPassProvider implements Provider {
   /**
    * In-flight and settled lookups keyed by command. Storing promises lets
    * concurrent reads of one ref share a single pass-cli call. Failures are
-   * dropped once they settle. Each key prefix ("view:", "vaults", "items:")
+   * dropped once they settle. Each key ("view:<ref>", "vaults", "list")
    * always stores the same result type.
    */
   readonly #cache = new Map<string, { expires: number; value: Promise<unknown> }>();
@@ -209,7 +209,7 @@ export class ProtonPassProvider implements Provider {
       // A failed upsert may still have created the item, so drop these
       // either way.
       this.#cache.delete(`view:${passRef}`);
-      this.#cache.delete(`items:${parts.vault}`);
+      this.#cache.delete("list");
     }
   }
 
@@ -217,28 +217,12 @@ export class ProtonPassProvider implements Provider {
     return this.#cached("vaults", () => repo.listVaultNames(this.#settings.binaryPath));
   }
 
-  #listItems(vault: string): Promise<string[]> {
-    return this.#cached(`items:${vault}`, () =>
-      repo.listItemTitles(this.#settings.binaryPath, vault),
-    );
-  }
-
   async list(): Promise<ProviderRef[]> {
-    const vaults = await this.#listVaults();
     const wanted = this.#settings.defaultVault.trim();
-    const targets = wanted ? vaults.filter((v) => v === wanted) : vaults;
-    const partsByVault = await Promise.all(
-      targets.map(async (vault) => {
-        const titles = await this.#listItems(vault).catch(() => [] as string[]);
-        // Listing doesn't say which fields an item has without fetching each
-        // one, so offer the conventional "password" field. The user can edit
-        // the placeholder to point elsewhere.
-        return titles.map((item) => ({ vault, item, field: "password" }));
-      }),
+    const references = await this.#cached("list", () =>
+      repo.listItemReferences(this.#settings.binaryPath, wanted ? [wanted] : undefined),
     );
-    return partsByVault
-      .flat()
-      .filter((parts) => toPassRef(parts) !== null)
+    return references
       .slice(0, MAX_LIST_ITEMS)
       .map((parts) => ({ provider: this.id, raw: formatPlaceholder(parts), parts }));
   }
@@ -251,7 +235,7 @@ export class ProtonPassProvider implements Provider {
     return {
       vault: this.#settings.defaultVault || "Personal",
       item: slugify(ctx.basename ?? "untitled"),
-      field: "password",
+      field: "Password",
     };
   }
 
@@ -278,6 +262,8 @@ export class ProtonPassProvider implements Provider {
       .setDesc(t("provider.protonpass.defaultVault.desc"))
       .addText((txt) =>
         txt.setValue(this.#settings.defaultVault).onChange(async (v) => {
+          // The cached listing was built for the old default vault.
+          this.#cache.delete("list");
           await this.#update({ defaultVault: v.trim() });
         }),
       );
