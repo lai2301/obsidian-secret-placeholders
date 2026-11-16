@@ -53,13 +53,14 @@ export class ProtonPassError extends Error {
   }
 }
 
-// pass-cli colours its log lines; strip ANSI escapes before matching or
-// showing them.
-function firstLine(stderr: string): string {
-  // eslint-disable-next-line no-control-regex -- matching ESC is the point
-  const plain = stderr.replace(/\u001b\[[0-9;]*m/g, "");
-  const line = plain.split(/\r?\n/).find((l) => l.trim() !== "") ?? "";
-  return line.trim().slice(0, 200);
+// pass-cli colours its log lines; strip ANSI escapes before showing them.
+// eslint-disable-next-line no-control-regex -- matching ESC is the point
+const ANSI_RE = /\u001b\[[0-9;]*m/g;
+
+/** Tidy one stderr line for display: drop the "Error:" or numbered-cause
+ *  ("1:") prefix and cap the length. */
+function cleanLine(line: string): string {
+  return line.trim().replace(/^(Error:|\d+:)\s*/, "").slice(0, 200);
 }
 
 function matchesAny(patterns: RegExp[], s: string): boolean {
@@ -67,19 +68,22 @@ function matchesAny(patterns: RegExp[], s: string): boolean {
 }
 
 function classifyStderr(stderr: string): ProtonPassError {
+  const lines = stderr
+    .replace(ANSI_RE, "")
+    .split(/\r?\n/)
+    .filter((l) => l.trim() !== "");
+
   if (matchesAny(AUTH_PATTERNS, stderr)) {
     return new ProtonPassError("not-logged-in", t("provider.protonpass.notLoggedIn"));
   } else if (matchesAny(NOT_FOUND_PATTERNS, stderr)) {
     // The useful line ("Could not find item ...") is the last cause, not
     // the first line.
-    const cause =
-      stderr
-        .split(/\r?\n/)
-        .reverse()
-        .find((l) => matchesAny(NOT_FOUND_PATTERNS, l)) ?? stderr;
-    return new ProtonPassError("not-found", firstLine(cause.replace(/^\s*\d+:\s*/, "")));
+    const cause = [...lines].reverse().find((l) => matchesAny(NOT_FOUND_PATTERNS, l)) ?? "";
+    return new ProtonPassError("not-found", cleanLine(cause));
   } else {
-    return new ProtonPassError("unknown", firstLine(stderr) || "pass-cli failed");
+    // pass-cli may log timestamped lines before its "Error: ..." summary.
+    const summary = lines.find((l) => l.startsWith("Error:")) ?? lines[0] ?? "";
+    return new ProtonPassError("unknown", cleanLine(summary) || "pass-cli failed");
   }
 }
 
