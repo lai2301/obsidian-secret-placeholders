@@ -50,9 +50,10 @@ export const listItemTitles = async (bin: string, vault: string): Promise<string
 
 /**
  * Reference parts for the active items in `vaults`, or in every vault the
- * session can see when `vaults` is omitted. A vault whose items fail to load
- * is skipped, and items that can't form a valid `pass://` reference are
- * dropped.
+ * session can see when `vaults` is omitted. A vault that doesn't exist is
+ * skipped, and items that can't form a valid `pass://` reference are
+ * dropped. Any other failure, such as a missing session, rejects the whole
+ * listing so it isn't mistaken for an empty one.
  */
 export const listItemReferences = async (
   bin: string,
@@ -61,7 +62,13 @@ export const listItemReferences = async (
   const targets = vaults ?? (await listVaultNames(bin));
   const partsByVault = await Promise.all(
     targets.map(async (vault) => {
-      const titles = await listItemTitles(bin, vault).catch((): string[] => []);
+      const titles = await listItemTitles(bin, vault).catch((e: unknown): string[] => {
+        if (e instanceof ProtonPassError && e.kind === "not-found") {
+          return [];
+        } else {
+          throw e;
+        }
+      });
       // Listing doesn't say which fields an item has without fetching each
       // one, so offer the conventional "password" field. The user can edit
       // the placeholder to point elsewhere.
