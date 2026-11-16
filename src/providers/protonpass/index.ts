@@ -98,15 +98,20 @@ export class ProtonPassProvider implements Provider {
     /**
      * pass-cli login is interactive (browser and TOTP prompts), so it has
      * to happen in a terminal. This only rechecks the session in case the
-     * user already logged in.
+     * user already logged in. The terminal hint is shown only for a missing
+     * session. Any other failure, such as a wrong binary path, is shown as is.
      */
     login: async () => {
       this.clearCache();
-      const status = await this.auth.status();
-      if (status.loggedIn) {
+      try {
+        await this.#listVaults();
         new Notice(t("provider.protonpass.loggedIn"));
-      } else {
-        new Notice(t("provider.protonpass.loginHint"), 10_000);
+      } catch (e) {
+        if (e instanceof ProtonPassError && e.kind === "not-logged-in") {
+          new Notice(t("provider.protonpass.loginHint"), 10_000);
+        } else {
+          new Notice(errorMessage(e));
+        }
       }
       this.#ctx.notifyAuthChanged(this.id);
       this.#notify();
