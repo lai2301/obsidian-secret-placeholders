@@ -22,7 +22,6 @@ export const en = {
   // Notices
   "notice.noProviderConfigured": "No provider configured",
   "notice.loggedOut": "{provider}: logged out",
-  "notice.providerReadOnly": "{provider} is read-only: edit the secret in its own app",
   "notice.cacheCleared": "Secret cache cleared",
   "notice.logInFirst": "{provider}: log in first",
   "notice.savedTo": "Saved to {ref}",
@@ -230,7 +229,6 @@ export const en = {
   "provider.protonpass.invalidBinary": "pass-cli path must be absolute and end in pass-cli. Check the plugin settings.",
   "provider.protonpass.binaryNotFound": "pass-cli not found or not executable at {path}",
   "provider.protonpass.invalidRef": "Invalid Proton Pass reference",
-  "provider.protonpass.readOnly": "Proton Pass is read-only in this plugin",
   "provider.protonpass.binaryPath.name": "pass-cli path",
   "provider.protonpass.binaryPath.desc": "Absolute path to the Proton Pass CLI binary. Obsidian does not inherit your shell PATH.",
   "provider.protonpass.defaultVault.name": "Default vault",

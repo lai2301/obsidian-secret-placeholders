@@ -8,14 +8,16 @@
  * - `<vault>` is the vault name, `<item>` the item title and `<field>` the
  *   field name (e.g. "password", "username", "email" or a custom field).
  *
- * Read-only: reading and listing are supported, creating or editing items
- * is not.
+ * Writing sets the field on the item, adding it as a hidden custom field if
+ * needed. A missing item is first created as an empty note.
  *
  * Security notes:
  * - The binary path comes from plugin settings only, never note content.
  * - The process runs without a shell, so a ref is always a single argv
  *   element and spaces or shell metacharacters are inert.
  * - Errors surface stderr only, never stdout, which may hold a secret.
+ * - pass-cli takes a value being saved as an argument, so other processes
+ *   run by the same user can see it while the command runs.
  */
 
 import { Notice, Setting } from "obsidian";
@@ -57,7 +59,6 @@ export class ProtonPassProvider implements Provider {
   readonly displayName = "Proton Pass";
   readonly placeholderPrefix = PREFIX;
   readonly placeholderRegex = PLACEHOLDER_RE;
-  readonly readOnly = true;
 
   readonly #ctx: PluginContext;
   #settings: ProtonPassSettings = { ...DEFAULTS };
@@ -181,8 +182,17 @@ export class ProtonPassProvider implements Provider {
     );
   }
 
-  async writeKey(): Promise<void> {
-    throw new ProtonPassError("unknown", t("provider.protonpass.readOnly"));
+  /** Set the secret at `ref` to `value`, creating the item if needed. */
+  async writeKey(ref: ProviderRef, value: string): Promise<void> {
+    const parts = fromRecord(ref.parts);
+    const passRef = toPassRef(parts);
+    if (!passRef) {
+      throw new ProtonPassError("not-found", t("provider.protonpass.invalidRef"));
+    }
+
+    await repo.upsertField(this.#settings.binaryPath, parts, value);
+    this.#cache.delete(`view:${passRef}`);
+    this.#cache.delete(`items:${parts.vault}`);
   }
 
   #listVaults(): Promise<string[]> {

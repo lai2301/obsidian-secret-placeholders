@@ -1,11 +1,16 @@
 /**
  * Repository over pass-cli: the boundary between the provider and Proton
- * Pass. Each function runs one pass-cli command and returns domain values,
- * so nothing outside this file builds argv or parses pass-cli output.
+ * Pass. Each function runs pass-cli commands and returns domain values, so
+ * nothing outside this file builds argv or parses pass-cli output.
+ *
+ * Options that carry a value use the `--name=value` form so a value starting
+ * with "-" can't be read as a flag.
  */
 
 import { runPassCli } from "./cli";
+import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
+import { PassRefParts } from "./ref";
 
 /** Output cap for commands that print one field, such as `item view`. */
 const VIEW_MAX_BUFFER = 64 * 1024;
@@ -34,6 +39,75 @@ export const listItemTitles = async (bin: string, vault: string): Promise<string
 
   const stdout = await runPassCli(bin, ["item", "list", vault, "--output", "json"], LIST_MAX_BUFFER);
   return itemTitles(parseJson(stdout));
+};
+
+/**
+ * Create a note item titled `title` in `vault` whose text is `note` (empty by
+ * default), and resolve to the new item's share ID.
+ */
+export const createNote = async (
+  bin: string,
+  vault: string,
+  title: string,
+  note = "",
+): Promise<string> => {
+  const stdout = await runPassCli(
+    bin,
+    ["item", "create", "note", `--vault-name=${vault}`, `--title=${title}`, `--note=${note}`],
+    VIEW_MAX_BUFFER,
+  );
+  return stdout.trim();
+};
+
+/**
+ * Set `field` on the item titled `item` in `vault` to `value`, adding the
+ * field if the item doesn't have it. A field created this way is hidden, as
+ * a secret should be. An existing field keeps its type.
+ *
+ * pass-cli takes the pair as `field_name=field_value`, so a field name
+ * containing "=" can't be expressed and is rejected.
+ */
+export const updateField = async (
+  bin: string,
+  { vault, item, field }: PassRefParts,
+  value: string,
+): Promise<void> => {
+  if (field.includes("=")) {
+    throw new ProtonPassError("unknown", `Field names can't contain "=": ${field}`);
+  }
+
+  await runPassCli(
+    bin,
+    [
+      "item",
+      "update",
+      `--vault-name=${vault}`,
+      `--item-title=${item}`,
+      `--field=${field}=${value}`,
+      "--field-type=hidden",
+    ],
+    VIEW_MAX_BUFFER,
+  );
+};
+
+/**
+ * Set `field` on the item titled `item` in `vault` to `value`, first creating
+ * the item as an empty note if `vault` has no item with that title.
+ *
+ * The titles come straight from pass-cli, never a cache, so a stale listing
+ * can't turn an update into a duplicate item.
+ */
+export const upsertField = async (
+  bin: string,
+  parts: PassRefParts,
+  value: string,
+): Promise<void> => {
+  const titles = await listItemTitles(bin, parts.vault);
+  if (!titles.includes(parts.item)) {
+    await createNote(bin, parts.vault, parts.item);
+  }
+
+  await updateField(bin, parts, value);
 };
 
 /** End the pass-cli session. */

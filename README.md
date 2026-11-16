@@ -48,7 +48,7 @@ display-only — it never writes to the vault.
 | 1Password Connect | Connect token (self-hosted Connect server) |
 | Vaultwarden / Bitwarden self-hosted | Master password |
 | Bitwarden cloud | Master password |
-| Proton Pass (desktop, read-only) | `pass-cli login` session |
+| Proton Pass (desktop) | `pass-cli login` session |
 
 Each backend has its own placeholder prefix — `bao:`, `1p:`, `vw:`, `pass:`.
 Enable any subset; disabled backends contribute no UI.

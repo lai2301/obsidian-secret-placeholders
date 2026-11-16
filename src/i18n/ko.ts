@@ -19,7 +19,6 @@ export const ko: Messages = {
   // 알림
   "notice.noProviderConfigured": "구성된 제공자가 없습니다",
   "notice.loggedOut": "{provider}: 로그아웃되었습니다",
-  "notice.providerReadOnly": "{provider}은(는) 읽기 전용입니다. 해당 앱에서 시크릿을 편집하세요",
   "notice.cacheCleared": "시크릿 캐시를 지웠습니다",
   "notice.logInFirst": "{provider}: 먼저 로그인하세요",
   "notice.savedTo": "{ref}에 저장했습니다",
@@ -227,7 +226,6 @@ export const ko: Messages = {
   "provider.protonpass.invalidBinary": "pass-cli 경로는 절대 경로여야 하며 pass-cli로 끝나야 합니다. 플러그인 설정을 확인하세요.",
   "provider.protonpass.binaryNotFound": "{path}에서 pass-cli를 찾을 수 없거나 실행할 수 없습니다",
   "provider.protonpass.invalidRef": "잘못된 Proton Pass 참조",
-  "provider.protonpass.readOnly": "이 플러그인에서 Proton Pass는 읽기 전용입니다",
   "provider.protonpass.binaryPath.name": "pass-cli 경로",
   "provider.protonpass.binaryPath.desc": "Proton Pass CLI 바이너리의 절대 경로. Obsidian은 셸의 PATH를 상속하지 않습니다.",
   "provider.protonpass.defaultVault.name": "기본 보관함",

@@ -19,7 +19,6 @@ export const ja: Messages = {
   // 通知
   "notice.noProviderConfigured": "プロバイダーが設定されていません",
   "notice.loggedOut": "{provider}: ログアウトしました",
-  "notice.providerReadOnly": "{provider} は読み取り専用です。シークレットは元のアプリで編集してください",
   "notice.cacheCleared": "シークレットキャッシュをクリアしました",
   "notice.logInFirst": "{provider}: 先にログインしてください",
   "notice.savedTo": "{ref} に保存しました",
@@ -227,7 +226,6 @@ export const ja: Messages = {
   "provider.protonpass.invalidBinary": "pass-cli のパスは絶対パスで、pass-cli で終わる必要があります。プラグイン設定を確認してください。",
   "provider.protonpass.binaryNotFound": "{path} に pass-cli が見つからないか、実行できません",
   "provider.protonpass.invalidRef": "無効な Proton Pass 参照です",
-  "provider.protonpass.readOnly": "このプラグインでは Proton Pass は読み取り専用です",
   "provider.protonpass.binaryPath.name": "pass-cli のパス",
   "provider.protonpass.binaryPath.desc": "Proton Pass CLI バイナリの絶対パス。Obsidian はシェルの PATH を引き継ぎません。",
   "provider.protonpass.defaultVault.name": "デフォルトの保管庫",

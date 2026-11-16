@@ -83,7 +83,10 @@ const classifyStderr = (stderr: string): ProtonPassError => {
   }
 };
 
-/** Map a failed execFile call to a ProtonPassError. Never reads stdout. */
+/**
+ * Map a failed execFile call to a ProtonPassError. Never reads stdout or the
+ * error's message, which repeats argv and so can hold a value being saved.
+ */
 const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   if (!(err instanceof Error)) return new ProtonPassError("unknown", String(err));
 
@@ -95,7 +98,7 @@ const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   } else if (typeof e.code === "number") {
     return classifyStderr(e.stderr ?? "");
   } else {
-    return new ProtonPassError("unknown", String(e.code ?? e.message));
+    return new ProtonPassError("unknown", `pass-cli failed (${String(e.code ?? e.signal ?? "no exit code")})`);
   }
 };
 

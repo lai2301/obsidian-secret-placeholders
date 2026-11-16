@@ -19,7 +19,6 @@ export const it: Messages = {
   // Notifiche
   "notice.noProviderConfigured": "Nessun provider configurato",
   "notice.loggedOut": "{provider}: disconnesso",
-  "notice.providerReadOnly": "{provider} è in sola lettura: modifica il segreto nella sua app",
   "notice.cacheCleared": "Cache dei segreti svuotata",
   "notice.logInFirst": "{provider}: accedi prima",
   "notice.savedTo": "Salvato in {ref}",
@@ -228,7 +227,6 @@ export const it: Messages = {
   "provider.protonpass.invalidBinary": "Il percorso di pass-cli deve essere assoluto e terminare con pass-cli. Controlla le impostazioni del plugin.",
   "provider.protonpass.binaryNotFound": "pass-cli non trovato o non eseguibile in {path}",
   "provider.protonpass.invalidRef": "Riferimento Proton Pass non valido",
-  "provider.protonpass.readOnly": "Proton Pass è in sola lettura in questo plugin",
   "provider.protonpass.binaryPath.name": "Percorso di pass-cli",
   "provider.protonpass.binaryPath.desc": "Percorso assoluto del binario Proton Pass CLI. Obsidian non eredita il PATH della shell.",
   "provider.protonpass.defaultVault.name": "Vault predefinito",

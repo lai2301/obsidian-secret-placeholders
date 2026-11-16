@@ -123,11 +123,16 @@ personal vault.
 
 ## Proton Pass
 
-Desktop only, read-only. The plugin shells out to the official
+Desktop only. The plugin shells out to the official
 [Proton Pass CLI](https://protonpass.github.io/pass-cli/) (`pass-cli`),
-which owns the session. Placeholders resolve and appear in search, but
-saving a selection or editing a value is not available — manage items in
-Proton Pass itself.
+which owns the session.
+
+- **Saving or editing a value** sets that field on the item. A field the
+  item doesn't have yet is added as a hidden custom field.
+- If no item with that title exists, an empty **note** item is created
+  first, then the field is added to it.
+- `pass-cli` only accepts the value as a command-line argument, so other
+  programs running as your user can see it while the save runs.
 
 1. Install `pass-cli` and run `pass-cli login` in a terminal.
 2. In the plugin's **Proton Pass** settings, set the **pass-cli path** to
