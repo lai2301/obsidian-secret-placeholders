@@ -2,7 +2,7 @@
 // owns the session (login happens in a terminal with `pass-cli login`).
 // Desktop only: spawning a process needs Node's child_process.
 //
-// Placeholder syntax: {{pp:<vault>/<item>/<field>}}
+// Placeholder syntax: {{pass:<vault>/<item>/<field>}}
 //   - maps 1:1 onto pass-cli's secret reference pass://<vault>/<item>/<field>
 //   - <vault> = vault name, <item> = item title, <field> = field name
 //     (e.g. "password", "username", "email", or a custom field)
@@ -57,10 +57,10 @@ const VIEW_MAX_BUFFER = 64 * 1024;
 const LIST_MAX_BUFFER = 8 * 1024 * 1024;
 const MAX_LIST_ITEMS = 500;
 
-// {{pp:<vault>/<item>/<field>}}
+// {{pass:<vault>/<item>/<field>}}
 // `/` separates segments, so it can't appear inside one; `{` and `}` are
 // forbidden so the closing braces still terminate.
-const PLACEHOLDER_RE = /\{\{pp:([^/{}]+)\/([^/{}]+)\/([^/{}]+)\}\}/g;
+const PLACEHOLDER_RE = /\{\{pass:([^/{}]+)\/([^/{}]+)\/([^/{}]+)\}\}/g;
 
 // Derived from recorded pass-cli 2.7 stderr. Don't guess these.
 const AUTH_PATTERNS = [/requires an authenticated client/, /there is no session/];
@@ -261,7 +261,7 @@ function parseJson(stdout: string): unknown {
 // --- provider ------------------------------------------------------------
 
 /** A pass:// reference is safe to hand to pass-cli when every segment is
- *  non-empty and free of control characters.  Segments also can't hold
+ *  nonempty and free of control characters. Segments also can't hold
  *  `/`, `{` or `}`, matching PLACEHOLDER_RE, so a ref built here always
  *  round-trips through formatRef and parseRef. */
 function toPassRef(parts: Record<string, string>): string | null {
@@ -275,14 +275,14 @@ function toPassRef(parts: Record<string, string>): string | null {
 export class ProtonPassProvider implements Provider {
   readonly id = "pp";
   readonly displayName = "Proton Pass";
-  readonly placeholderPrefix = "pp:";
+  readonly placeholderPrefix = "pass:";
   readonly placeholderRegex = PLACEHOLDER_RE;
   readonly readOnly = true;
 
   private settings: ProtonPassSettings = { ...DEFAULTS };
   private cli: PassCli;
   // Holds lookups, not values, so concurrent reads of one ref share a
-  // single pass-cli call.  Failures are dropped once they settle.
+  // single pass-cli call. Failures are dropped once they settle.
   private cache = new Map<string, { expires: number; value: Promise<string> }>();
   auth: ProviderAuth;
 
@@ -301,7 +301,7 @@ export class ProtonPassProvider implements Provider {
         }
       },
       // pass-cli login is interactive (browser / TOTP prompts), so it has
-      // to happen in a terminal.  Re-check afterwards in case the user
+      // to happen in a terminal. Recheck afterwords in case the user
       // already did it.
       login: async () => {
         this.clearCache();
@@ -361,7 +361,7 @@ export class ProtonPassProvider implements Provider {
 
   formatRef(parts: Record<string, string>): string {
     const { vault, item, field } = parts;
-    return `{{pp:${vault}/${item}/${field}}}`;
+    return `{{pass:${vault}/${item}/${field}}}`;
   }
 
   /** Cached by key. A rejected promise is evicted so a retry asks again. */
@@ -421,20 +421,20 @@ export class ProtonPassProvider implements Provider {
     const candidates = wanted ? vaults.filter((v) => v === wanted) : vaults;
     // A leading "-" would be read as a flag by pass-cli.
     const targets = candidates.filter((v) => !v.startsWith("-"));
-    const out: ProviderRef[] = [];
-    for (const vault of targets) {
-      const titles = await this.listItems(vault).catch(() => [] as string[]);
-      for (const item of titles) {
-        if (out.length >= MAX_LIST_ITEMS) return out;
-        // Listing doesn't tell us which fields an item has without
-        // fetching each one, so surface the conventional "password"
-        // field; the user can edit the placeholder to point elsewhere.
-        const parts = { vault, item, field: "password" };
-        if (!toPassRef(parts)) continue;
-        out.push({ provider: this.id, raw: this.formatRef(parts), parts });
-      }
-    }
-    return out;
+    const partsByVault = await Promise.all(
+      targets.map(async (vault) => {
+        const titles = await this.listItems(vault).catch(() => [] as string[]);
+        // Listing doesn't tell us which fields an item has without fetching
+        // each one, so surface nothing so the user can edit the placeholder
+        // themselves.
+        return titles.map((item) => ({ vault, item, field: "" }));
+      }),
+    );
+    return partsByVault
+      .flat()
+      .filter((parts) => toPassRef(parts) !== null)
+      .slice(0, MAX_LIST_ITEMS)
+      .map((parts) => ({ provider: this.id, raw: this.formatRef(parts), parts }));
   }
 
   clearCache(): void {
