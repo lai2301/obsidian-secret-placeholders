@@ -19,6 +19,7 @@ export const ko: Messages = {
   // 알림
   "notice.noProviderConfigured": "구성된 제공자가 없습니다",
   "notice.loggedOut": "{provider}: 로그아웃되었습니다",
+  "notice.providerReadOnly": "{provider}은(는) 읽기 전용입니다. 해당 앱에서 시크릿을 편집하세요",
   "notice.cacheCleared": "시크릿 캐시를 지웠습니다",
   "notice.logInFirst": "{provider}: 먼저 로그인하세요",
   "notice.savedTo": "{ref}에 저장했습니다",
@@ -218,6 +219,21 @@ export const ko: Messages = {
   "provider.onepassword.notLoggedIn": "1Password에 로그인되지 않음",
   "provider.onepassword.urlNotConfigured":
     "1Password Connect URL이 구성되지 않음",
+  // Provider — Proton Pass
+  "provider.protonpass.heading": "Proton Pass",
+  "provider.protonpass.loggedIn": "Proton Pass: 로그인됨",
+  "provider.protonpass.loginHint": "Proton Pass: 터미널에서 `pass-cli login`을 실행한 뒤 다시 로그인을 클릭하세요.",
+  "provider.protonpass.notLoggedIn": "Proton Pass에 로그인되어 있지 않습니다 (`pass-cli login` 실행)",
+  "provider.protonpass.invalidBinary": "pass-cli 경로는 절대 경로여야 하며 pass-cli로 끝나야 합니다. 플러그인 설정을 확인하세요.",
+  "provider.protonpass.binaryNotFound": "{path}에서 pass-cli를 찾을 수 없거나 실행할 수 없습니다",
+  "provider.protonpass.invalidRef": "잘못된 Proton Pass 참조",
+  "provider.protonpass.readOnly": "이 플러그인에서 Proton Pass는 읽기 전용입니다",
+  "provider.protonpass.binaryPath.name": "pass-cli 경로",
+  "provider.protonpass.binaryPath.desc": "Proton Pass CLI 바이너리의 절대 경로. Obsidian은 셸의 PATH를 상속하지 않습니다.",
+  "provider.protonpass.defaultVault.name": "기본 보관함",
+  "provider.protonpass.defaultVault.desc": "새 플레이스홀더의 기본값으로 사용할 보관함 이름. 비워 두면 모든 보관함을 나열합니다.",
+  "provider.protonpass.cacheTtl.name": "캐시 TTL (초)",
+  "provider.protonpass.cacheTtl.desc": "Proton Pass 값과 목록을 메모리에 보관하는 시간.",
   "provider.openbao.notLoggedIn": "OpenBao에 로그인되지 않음",
   "provider.openbao.oidc.noAuthUrl": "OpenBao가 auth_url을 반환하지 않았습니다",
   "provider.openbao.oidc.noClientToken":

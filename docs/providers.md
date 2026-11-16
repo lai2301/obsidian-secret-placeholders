@@ -7,6 +7,7 @@ disabled backends contribute no UI at all.
 - [OpenBao / HashiCorp Vault](#openbao--hashicorp-vault)
 - [1Password Connect](#1password-connect)
 - [Bitwarden / Vaultwarden](#bitwarden--vaultwarden)
+- [Proton Pass](#proton-pass)
 - [Placeholder syntax](#placeholder-syntax)
 
 ---
@@ -120,6 +121,24 @@ personal vault.
 
 ---
 
+## Proton Pass
+
+Desktop only, read-only. The plugin shells out to the official
+[Proton Pass CLI](https://protonpass.github.io/pass-cli/) (`pass-cli`),
+which owns the session. Placeholders resolve and appear in search, but
+saving a selection or editing a value is not available — manage items in
+Proton Pass itself.
+
+1. Install `pass-cli` and run `pass-cli login` in a terminal.
+2. In the plugin's **Proton Pass** settings, set the **pass-cli path** to
+   the binary's absolute path (`which pass-cli`). Obsidian launched from
+   the dock or start menu does not inherit your shell `PATH`.
+3. Optionally set a **default vault** to limit search to one vault.
+
+*Log in* only re-checks the CLI session; *Log out* runs `pass-cli logout`.
+
+---
+
 ## Placeholder syntax
 
 Every placeholder is `{{<prefix>:<reference>}}`. The reference shape
@@ -130,6 +149,7 @@ depends on the provider.
 | OpenBao | `{{bao:<mount>/<path>#<key>}}` | `{{bao:kv/obsidian/github#token}}` |
 | 1Password | `{{1p:<vault>/<item>#<field>}}` | `{{1p:Personal/GitHub#password}}` |
 | Bitwarden | `{{vw:[<folder>/]<item>#<field>}}` | `{{vw:Work/CI#password}}` or `{{vw:GitHub#password}}` |
+| Proton Pass | `{{pp:<vault>/<item>/<field>}}` | `{{pp:Personal/GitHub/password}}` |
 
 Notes:
 
@@ -142,3 +162,5 @@ Notes:
 - A `/` inside an item title breaks the syntax (the first `/` is the
   folder separator). Rename the item, or reference it by its provider
   UUID instead of its name.
+- Proton Pass references map 1:1 onto `pass://<vault>/<item>/<field>`, so
+  no segment may contain `/`.

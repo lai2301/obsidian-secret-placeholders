@@ -19,6 +19,7 @@ export const ja: Messages = {
   // 通知
   "notice.noProviderConfigured": "プロバイダーが設定されていません",
   "notice.loggedOut": "{provider}: ログアウトしました",
+  "notice.providerReadOnly": "{provider} は読み取り専用です。シークレットは元のアプリで編集してください",
   "notice.cacheCleared": "シークレットキャッシュをクリアしました",
   "notice.logInFirst": "{provider}: 先にログインしてください",
   "notice.savedTo": "{ref} に保存しました",
@@ -218,6 +219,21 @@ export const ja: Messages = {
   "provider.onepassword.notLoggedIn": "1Password にログインしていません",
   "provider.onepassword.urlNotConfigured":
     "1Password Connect URL が設定されていません",
+  // Provider — Proton Pass
+  "provider.protonpass.heading": "Proton Pass",
+  "provider.protonpass.loggedIn": "Proton Pass: ログインしました",
+  "provider.protonpass.loginHint": "Proton Pass: ターミナルで `pass-cli login` を実行してから、もう一度ログインをクリックしてください。",
+  "provider.protonpass.notLoggedIn": "Proton Pass にログインしていません（`pass-cli login` を実行してください）",
+  "provider.protonpass.invalidBinary": "pass-cli のパスは絶対パスで、pass-cli で終わる必要があります。プラグイン設定を確認してください。",
+  "provider.protonpass.binaryNotFound": "{path} に pass-cli が見つからないか、実行できません",
+  "provider.protonpass.invalidRef": "無効な Proton Pass 参照です",
+  "provider.protonpass.readOnly": "このプラグインでは Proton Pass は読み取り専用です",
+  "provider.protonpass.binaryPath.name": "pass-cli のパス",
+  "provider.protonpass.binaryPath.desc": "Proton Pass CLI バイナリの絶対パス。Obsidian はシェルの PATH を引き継ぎません。",
+  "provider.protonpass.defaultVault.name": "デフォルトの保管庫",
+  "provider.protonpass.defaultVault.desc": "新しいプレースホルダーのデフォルトに使う保管庫名。空欄ですべての保管庫を一覧表示します。",
+  "provider.protonpass.cacheTtl.name": "キャッシュ TTL（秒）",
+  "provider.protonpass.cacheTtl.desc": "Proton Pass の取得値と一覧をメモリに保持する時間。",
   "provider.openbao.notLoggedIn": "OpenBao にログインしていません",
   "provider.openbao.oidc.noAuthUrl": "OpenBao が auth_url を返しませんでした",
   "provider.openbao.oidc.noClientToken":

@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   clickAction: "copy",
   modifierClickAction: "toggle-mask",
   maskCharacter: "•",
-  enabledProviders: { bao: true, "1p": true, vw: true },
+  enabledProviders: { bao: true, "1p": true, vw: true, pp: true },
   statusBarProviders: [],
   language: "auto",
 };
@@ -154,6 +154,7 @@ export class SecretPlaceholdersSettingTab extends PluginSettingTab {
       bao: "OpenBao / Vault",
       "1p": "1Password Connect",
       vw: "Bitwarden / Vaultwarden",
+      pp: "Proton Pass",
     };
 
     for (const id of knownIds) {

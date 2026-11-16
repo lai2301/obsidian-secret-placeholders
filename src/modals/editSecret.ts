@@ -16,6 +16,10 @@ export function openEditSecretModal(
   provider: Provider,
   ref: ProviderRef,
 ): void {
+  if (provider.readOnly) {
+    new Notice(t("notice.providerReadOnly", { provider: provider.displayName }));
+    return;
+  }
   new EditSecretModal(plugin, provider, ref).open();
 }
 

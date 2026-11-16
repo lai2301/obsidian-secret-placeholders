@@ -22,6 +22,7 @@ export const en = {
   // Notices
   "notice.noProviderConfigured": "No provider configured",
   "notice.loggedOut": "{provider}: logged out",
+  "notice.providerReadOnly": "{provider} is read-only: edit the secret in its own app",
   "notice.cacheCleared": "Secret cache cleared",
   "notice.logInFirst": "{provider}: log in first",
   "notice.savedTo": "Saved to {ref}",
@@ -221,6 +222,21 @@ export const en = {
   "provider.onepassword.notLoggedIn": "Not logged in to 1Password",
   "provider.onepassword.urlNotConfigured":
     "1Password Connect URL not configured",
+  // Provider — Proton Pass
+  "provider.protonpass.heading": "Proton Pass",
+  "provider.protonpass.loggedIn": "Proton Pass: logged in",
+  "provider.protonpass.loginHint": "Proton Pass: run `pass-cli login` in a terminal, then click Log in again.",
+  "provider.protonpass.notLoggedIn": "Not logged in to Proton Pass (run `pass-cli login`)",
+  "provider.protonpass.invalidBinary": "pass-cli path must be absolute and end in pass-cli. Check the plugin settings.",
+  "provider.protonpass.binaryNotFound": "pass-cli not found or not executable at {path}",
+  "provider.protonpass.invalidRef": "Invalid Proton Pass reference",
+  "provider.protonpass.readOnly": "Proton Pass is read-only in this plugin",
+  "provider.protonpass.binaryPath.name": "pass-cli path",
+  "provider.protonpass.binaryPath.desc": "Absolute path to the Proton Pass CLI binary. Obsidian does not inherit your shell PATH.",
+  "provider.protonpass.defaultVault.name": "Default vault",
+  "provider.protonpass.defaultVault.desc": "Vault name used as the default for new placeholders. Leave empty to list all vaults.",
+  "provider.protonpass.cacheTtl.name": "Cache TTL (seconds)",
+  "provider.protonpass.cacheTtl.desc": "How long resolved Proton Pass values and listings are kept in memory.",
   "provider.openbao.notLoggedIn": "Not logged in to OpenBao",
   "provider.openbao.oidc.noAuthUrl": "OpenBao did not return an auth_url",
   "provider.openbao.oidc.noClientToken":

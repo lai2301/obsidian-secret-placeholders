@@ -19,6 +19,7 @@ export const it: Messages = {
   // Notifiche
   "notice.noProviderConfigured": "Nessun provider configurato",
   "notice.loggedOut": "{provider}: disconnesso",
+  "notice.providerReadOnly": "{provider} è in sola lettura: modifica il segreto nella sua app",
   "notice.cacheCleared": "Cache dei segreti svuotata",
   "notice.logInFirst": "{provider}: accedi prima",
   "notice.savedTo": "Salvato in {ref}",
@@ -219,6 +220,21 @@ export const it: Messages = {
   "provider.onepassword.notLoggedIn": "Accesso a 1Password non effettuato",
   "provider.onepassword.urlNotConfigured":
     "URL di 1Password Connect non configurato",
+  // Provider — Proton Pass
+  "provider.protonpass.heading": "Proton Pass",
+  "provider.protonpass.loggedIn": "Proton Pass: accesso effettuato",
+  "provider.protonpass.loginHint": "Proton Pass: esegui `pass-cli login` in un terminale, poi clicca di nuovo Accedi.",
+  "provider.protonpass.notLoggedIn": "Accesso a Proton Pass non effettuato (esegui `pass-cli login`)",
+  "provider.protonpass.invalidBinary": "Il percorso di pass-cli deve essere assoluto e terminare con pass-cli. Controlla le impostazioni del plugin.",
+  "provider.protonpass.binaryNotFound": "pass-cli non trovato o non eseguibile in {path}",
+  "provider.protonpass.invalidRef": "Riferimento Proton Pass non valido",
+  "provider.protonpass.readOnly": "Proton Pass è in sola lettura in questo plugin",
+  "provider.protonpass.binaryPath.name": "Percorso di pass-cli",
+  "provider.protonpass.binaryPath.desc": "Percorso assoluto del binario Proton Pass CLI. Obsidian non eredita il PATH della shell.",
+  "provider.protonpass.defaultVault.name": "Vault predefinito",
+  "provider.protonpass.defaultVault.desc": "Nome del vault usato come predefinito per i nuovi segnaposto. Lascia vuoto per elencare tutti i vault.",
+  "provider.protonpass.cacheTtl.name": "TTL della cache (secondi)",
+  "provider.protonpass.cacheTtl.desc": "Per quanto tempo i valori e gli elenchi di Proton Pass restano in memoria.",
   "provider.openbao.notLoggedIn": "Accesso a OpenBao non effettuato",
   "provider.openbao.oidc.noAuthUrl": "OpenBao non ha restituito un auth_url",
   "provider.openbao.oidc.noClientToken":

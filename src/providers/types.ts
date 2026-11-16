@@ -77,6 +77,11 @@ export interface Provider {
    *  Bitwarden's "folder". */
   optionalRefParts?: string[];
 
+  /** True when the provider can read and list but not create or edit
+   *  secrets.  Write actions (save selection, edit value) are hidden for
+   *  it and writeKey always throws. */
+  readOnly?: boolean;
+
   readKey(ref: ProviderRef): Promise<string>;
   writeKey(ref: ProviderRef, value: string): Promise<void>;
   /** Best-effort enumeration for autocomplete / browser modal. May return

@@ -83,6 +83,7 @@ export function registerEditorContextMenu(
 
       if (selection) {
         for (const provider of plugin.registry.all()) {
+          if (provider.readOnly) continue;
           menu.addItem((item) => {
             item
               .setTitle(t("contextMenu.saveSelectionTo", { provider: provider.displayName }))
@@ -109,14 +110,16 @@ export function registerEditorContextMenu(
               void copyResolved(hit);
             });
         });
-        menu.addItem((item) => {
-          item
-            .setTitle(t("contextMenu.editSecretValue"))
-            .setIcon("pencil")
-            .onClick(() => {
-              openEditSecretModal(plugin, hit.provider, hit.ref);
-            });
-        });
+        if (!hit.provider.readOnly) {
+          menu.addItem((item) => {
+            item
+              .setTitle(t("contextMenu.editSecretValue"))
+              .setIcon("pencil")
+              .onClick(() => {
+                openEditSecretModal(plugin, hit.provider, hit.ref);
+              });
+          });
+        }
         menu.addItem((item) => {
           item
             .setTitle(t("contextMenu.replaceWithResolved"))
@@ -158,14 +161,16 @@ export function attachSpanContextMenu(
           });
         }),
     );
-    menu.addItem((item) =>
-      item
-        .setTitle(t("contextMenu.editSecretValue"))
-        .setIcon("pencil")
-        .onClick(() => {
-          openEditSecretModal(plugin, provider, ref);
-        }),
-    );
+    if (!provider.readOnly) {
+      menu.addItem((item) =>
+        item
+          .setTitle(t("contextMenu.editSecretValue"))
+          .setIcon("pencil")
+          .onClick(() => {
+            openEditSecretModal(plugin, provider, ref);
+          }),
+      );
+    }
     menu.addItem((item) =>
       item
         .setTitle(t("contextMenu.replaceWithResolved"))

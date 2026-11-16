@@ -23,6 +23,11 @@ function activeProvider(plugin: SecretPlaceholdersPlugin): Provider | null {
   return plugin.registry.defaultProvider() ?? null;
 }
 
+/** First registered provider that can store secrets. */
+function writableProvider(plugin: SecretPlaceholdersPlugin): Provider | null {
+  return plugin.registry.all().find((p) => !p.readOnly) ?? null;
+}
+
 async function isProviderLoggedIn(provider: Provider): Promise<boolean> {
   return (await provider.auth.status()).loggedIn;
 }
@@ -64,7 +69,7 @@ export function registerCommands(plugin: SecretPlaceholdersPlugin): void {
     editorCheckCallback: (checking, editor, view) => {
       const sel = editor.getSelection();
       if (!sel) return false;
-      const provider = activeProvider(plugin);
+      const provider = writableProvider(plugin);
       if (!provider) return false;
       if (checking) return true;
 

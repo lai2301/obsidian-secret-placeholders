@@ -19,6 +19,7 @@ export const zhTW: Messages = {
   // 通知
   "notice.noProviderConfigured": "未設定提供方",
   "notice.loggedOut": "{provider}：已登出",
+  "notice.providerReadOnly": "{provider} 為唯讀：請在其應用程式中編輯該密鑰",
   "notice.cacheCleared": "密鑰快取已清除",
   "notice.logInFirst": "{provider}：請先登入",
   "notice.savedTo": "已儲存到 {ref}",
@@ -218,6 +219,21 @@ export const zhTW: Messages = {
   "provider.onepassword.notLoggedIn": "尚未登入 1Password",
   "provider.onepassword.urlNotConfigured":
     "未設定 1Password Connect URL",
+  // Provider — Proton Pass
+  "provider.protonpass.heading": "Proton Pass",
+  "provider.protonpass.loggedIn": "Proton Pass：已登入",
+  "provider.protonpass.loginHint": "Proton Pass：請在終端機執行 `pass-cli login`，然後再次點擊登入。",
+  "provider.protonpass.notLoggedIn": "未登入 Proton Pass（請執行 `pass-cli login`）",
+  "provider.protonpass.invalidBinary": "pass-cli 路徑必須為絕對路徑且以 pass-cli 結尾。請檢查外掛設定。",
+  "provider.protonpass.binaryNotFound": "在 {path} 找不到 pass-cli 或其無法執行",
+  "provider.protonpass.invalidRef": "無效的 Proton Pass 參照",
+  "provider.protonpass.readOnly": "Proton Pass 在此外掛中為唯讀",
+  "provider.protonpass.binaryPath.name": "pass-cli 路徑",
+  "provider.protonpass.binaryPath.desc": "Proton Pass CLI 執行檔的絕對路徑。Obsidian 不會繼承 shell 的 PATH。",
+  "provider.protonpass.defaultVault.name": "預設保險庫",
+  "provider.protonpass.defaultVault.desc": "新預留位置預設使用的保險庫名稱。留空則列出所有保險庫。",
+  "provider.protonpass.cacheTtl.name": "快取 TTL（秒）",
+  "provider.protonpass.cacheTtl.desc": "Proton Pass 解析值與清單在記憶體中保留的時間。",
   "provider.openbao.notLoggedIn": "尚未登入 OpenBao",
   "provider.openbao.oidc.noAuthUrl": "OpenBao 未傳回 auth_url",
   "provider.openbao.oidc.noClientToken":

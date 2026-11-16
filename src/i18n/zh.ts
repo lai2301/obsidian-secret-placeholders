@@ -19,6 +19,7 @@ export const zh: Messages = {
   // 通知
   "notice.noProviderConfigured": "未配置提供方",
   "notice.loggedOut": "{provider}：已登出",
+  "notice.providerReadOnly": "{provider} 为只读：请在其应用中编辑该密钥",
   "notice.cacheCleared": "密钥缓存已清除",
   "notice.logInFirst": "{provider}：请先登录",
   "notice.savedTo": "已保存到 {ref}",
@@ -218,6 +219,21 @@ export const zh: Messages = {
   "provider.onepassword.notLoggedIn": "未登录到 1Password",
   "provider.onepassword.urlNotConfigured":
     "未配置 1Password Connect URL",
+  // Provider — Proton Pass
+  "provider.protonpass.heading": "Proton Pass",
+  "provider.protonpass.loggedIn": "Proton Pass：已登录",
+  "provider.protonpass.loginHint": "Proton Pass：请在终端运行 `pass-cli login`，然后再次点击登录。",
+  "provider.protonpass.notLoggedIn": "未登录 Proton Pass（请运行 `pass-cli login`）",
+  "provider.protonpass.invalidBinary": "pass-cli 路径必须为绝对路径且以 pass-cli 结尾。请检查插件设置。",
+  "provider.protonpass.binaryNotFound": "在 {path} 未找到 pass-cli 或其不可执行",
+  "provider.protonpass.invalidRef": "无效的 Proton Pass 引用",
+  "provider.protonpass.readOnly": "Proton Pass 在此插件中为只读",
+  "provider.protonpass.binaryPath.name": "pass-cli 路径",
+  "provider.protonpass.binaryPath.desc": "Proton Pass CLI 可执行文件的绝对路径。Obsidian 不会继承 shell 的 PATH。",
+  "provider.protonpass.defaultVault.name": "默认保险库",
+  "provider.protonpass.defaultVault.desc": "新占位符默认使用的保险库名称。留空则列出所有保险库。",
+  "provider.protonpass.cacheTtl.name": "缓存 TTL（秒）",
+  "provider.protonpass.cacheTtl.desc": "Proton Pass 解析值与列表在内存中保留的时间。",
   "provider.openbao.notLoggedIn": "未登录到 OpenBao",
   "provider.openbao.oidc.noAuthUrl": "OpenBao 未返回 auth_url",
   "provider.openbao.oidc.noClientToken":
