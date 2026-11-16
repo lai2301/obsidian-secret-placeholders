@@ -7,6 +7,7 @@
  * with "-" can't be read as a flag.
  */
 
+import { t } from "../../i18n";
 import { runPassCli } from "./cli";
 import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
@@ -87,13 +88,19 @@ export const updateField = async (
  * the item as an empty note if `vault` has no item with that title.
  *
  * The titles come straight from pass-cli, never a cache, so a stale listing
- * can't turn an update into a duplicate item.
+ * can't turn an update into a duplicate item. A vault starting with "-"
+ * can't be listed (see {@link listItemTitles}), so writing to it is refused
+ * rather than creating a new note on every save.
  */
 export const upsertField = async (
   bin: string,
   parts: PassRefParts,
   value: string,
 ): Promise<void> => {
+  if (parts.vault.startsWith("-")) {
+    throw new ProtonPassError("unknown", t("provider.protonpass.dashVault", { vault: parts.vault }));
+  }
+
   const titles = await listItemTitles(bin, parts.vault);
   if (!titles.includes(parts.item)) {
     await createEmptyNote(bin, parts.vault, parts.item);

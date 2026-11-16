@@ -226,6 +226,7 @@ export const zh: Messages = {
   "provider.protonpass.invalidBinary": "pass-cli 路径必须为绝对路径且以 pass-cli 结尾。请检查插件设置。",
   "provider.protonpass.binaryNotFound": "在 {path} 未找到 pass-cli 或其不可执行",
   "provider.protonpass.invalidRef": "无效的 Proton Pass 引用",
+  "provider.protonpass.dashVault": "无法保存到保险库“{vault}”：不支持以“-”开头的名称",
   "provider.protonpass.binaryPath.name": "pass-cli 路径",
   "provider.protonpass.binaryPath.desc": "Proton Pass CLI 可执行文件的绝对路径。Obsidian 不会继承 shell 的 PATH。",
   "provider.protonpass.defaultVault.name": "默认保险库",
