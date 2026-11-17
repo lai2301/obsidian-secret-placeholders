@@ -46,11 +46,22 @@ import {
   toPassReference,
 } from "./references";
 import { runPassCli } from "./cli";
+import { createCache } from "./cache";
 import { createRepository } from "./repository";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
 /** Upper bound on references returned by {@link ProtonPassProvider.list}. */
 const MAX_LIST_ITEMS = 500;
+
+/** What the provider caches, keyed by the pass-cli command that loads it. */
+interface CachedLookups {
+  /** A secret, keyed by its `pass://` reference. */
+  [key: `view:${string}`]: string;
+  /** Names of every vault the session can see. */
+  vaults: string[];
+  /** References for the listing in the default vault, or in every vault. */
+  list: PassReferenceParts[];
+}
 
 /**
  * The `pass://` reference for `parts`.
@@ -74,13 +85,7 @@ export class ProtonPassProvider implements Provider {
 
   readonly #ctx: PluginContext;
   #settings: ProtonPassSettings = { ...DEFAULTS };
-  /**
-   * In-flight and settled lookups keyed by command. Storing promises lets
-   * concurrent reads of one reference share a single pass-cli call.
-   * Failures are dropped once they settle. Each key ("view:<reference>",
-   * "vaults", "list") always stores the same result type.
-   */
-  readonly #cache = new Map<string, { expires: number; value: Promise<unknown> }>();
+  readonly #cache = createCache<CachedLookups>(() => this.#settings.cacheTtlSec * 1000);
   readonly #listeners = new Set<() => void>();
   /** Runs pass-cli at the binary path in the current settings. */
   readonly #repo = createRepository((args, maxBuffer) =>
@@ -168,35 +173,10 @@ export class ProtonPassProvider implements Provider {
     return formatPlaceholder(fromRecord(parts));
   }
 
-  /**
-   * Return the cached result for `key`, or start `load` and cache it.
-   * A rejected promise is evicted so a retry asks again, so `load` should
-   * include any parsing that can fail.
-   */
-  #cached<T>(key: string, load: () => Promise<T>): Promise<T> {
-    const now = Date.now();
-    const hit = this.#cache.get(key);
-
-    if (hit && hit.expires > now) {
-      return hit.value as Promise<T>;
-    } else {
-      const value = load();
-      const entry = { expires: now + this.#settings.cacheTtlSec * 1000, value };
-
-      this.#cache.set(key, entry);
-      value.catch(() => {
-        if (this.#cache.get(key) === entry) {
-          this.#cache.delete(key);
-        }
-      });
-      return value;
-    }
-  }
-
   readKey(reference: ProviderRef): Promise<string> {
     return withUserMessages(() => {
       const passReference = requirePassReference(fromRecord(reference.parts));
-      return this.#cached(`view:${passReference}`, () =>
+      return this.#cache.getOrLoad(`view:${passReference}`, () =>
         this.#repo.readSecret(passReference),
       );
     });
@@ -212,20 +192,20 @@ export class ProtonPassProvider implements Provider {
       } finally {
         // A failed upsert may still have created the item, so drop these
         // either way.
-        this.#cache.delete(`view:${passReference}`);
-        this.#cache.delete("list");
+        this.#cache.evict(`view:${passReference}`);
+        this.#cache.evict("list");
       }
     });
   }
 
   #listVaults(): Promise<string[]> {
-    return this.#cached("vaults", () => this.#repo.listVaultNames());
+    return this.#cache.getOrLoad("vaults", () => this.#repo.listVaultNames());
   }
 
   list(): Promise<ProviderRef[]> {
     return withUserMessages(async () => {
       const wanted = this.#settings.defaultVault.trim();
-      const references = await this.#cached("list", () =>
+      const references = await this.#cache.getOrLoad("list", () =>
         this.#repo.listItemReferences(wanted ? [wanted] : undefined),
       );
       return references
@@ -270,7 +250,7 @@ export class ProtonPassProvider implements Provider {
       .addText((txt) =>
         txt.setValue(this.#settings.defaultVault).onChange(async (v) => {
           // The cached listing was built for the old default vault.
-          this.#cache.delete("list");
+          this.#cache.evict("list");
           await this.#update({ defaultVault: v.trim() });
         }),
       );
