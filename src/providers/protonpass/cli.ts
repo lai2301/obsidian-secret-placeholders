@@ -5,7 +5,7 @@
 
 import { Platform } from "obsidian";
 
-import { requireNode } from "../../node";
+import { requireNode } from "../../common";
 import { ProtonPassError, errorMessage } from "./errors";
 
 const TIMEOUT_MS = 10_000;
@@ -20,7 +20,7 @@ const NOT_FOUND_PATTERNS: readonly RegExp[] = [
 ];
 
 // Node interop is typed with local interfaces rather than @types/node (see
-// src/node.ts), so the community-plugin review scanner doesn't need Node
+// src/common.ts), so the community-plugin review scanner doesn't need Node
 // types to see these calls as typed.
 
 /** What the promisified execFile rejects with: the exec error plus the process output. */

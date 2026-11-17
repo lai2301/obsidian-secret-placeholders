@@ -17,6 +17,7 @@ import { Notice, Setting, requestUrl } from "obsidian";
 
 import { t } from "../i18n";
 import { renderAuthStatusRow } from "../authStatusRow";
+import { slugify } from "../common";
 import {
   NoteContext,
   PluginContext,
@@ -71,14 +72,6 @@ const DEFAULTS: OnePasswordSettings = {
 // and <item>, and `}` everywhere so the closing braces still terminate.
 const PLACEHOLDER_RE =
   /\{\{1p:([^/#{}]+)\/([^#{}]+)#([^{}]+)\}\}/g;
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
 
 // --- client --------------------------------------------------------------
 

@@ -24,6 +24,7 @@ import { Notice, Setting } from "obsidian";
 
 import { t } from "../../i18n";
 import { renderAuthStatusRow } from "../../authStatusRow";
+import { slugify } from "../../common";
 import {
   NoteContext,
   PluginContext,
@@ -50,13 +51,6 @@ import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
 /** Upper bound on references returned by {@link ProtonPassProvider.list}. */
 const MAX_LIST_ITEMS = 500;
-
-const slugify = (s: string): string =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
 
 /**
  * The `pass://` reference for `parts`.

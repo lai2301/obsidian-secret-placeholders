@@ -13,7 +13,7 @@
 import { Platform, requestUrl } from "obsidian";
 
 import { t } from "../../i18n";
-import { requireNode } from "../../node";
+import { requireNode } from "../../common";
 
 export interface OidcLoginOptions {
   baseUrl: string;

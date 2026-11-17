@@ -8,3 +8,13 @@ export function requireNode<T>(id: string): T {
     .require;
   return req(id) as T;
 }
+
+/** Turn free text (e.g. a note's basename) into a short lowercase slug for
+ *  suggested secret names. */
+export function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
