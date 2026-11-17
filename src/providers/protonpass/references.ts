@@ -9,6 +9,12 @@
  */
 export const PREFIX = "pp:";
 
+/**
+ * Field offered when nothing names one: in new placeholders and in listings,
+ * which can't tell which fields an item has without fetching each one.
+ */
+export const DEFAULT_FIELD = "Password";
+
 /** The three segments of a Proton Pass reference. */
 export type PassReferenceParts = { vault: string; item: string; field: string };
 

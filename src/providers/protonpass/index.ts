@@ -34,6 +34,7 @@ import {
 } from "../types";
 import { ProtonPassError, errorMessage } from "./errors";
 import {
+  DEFAULT_FIELD,
   PLACEHOLDER_RE,
   PassReferenceParts,
   PREFIX,
@@ -235,7 +236,7 @@ export class ProtonPassProvider implements Provider {
     return {
       vault: this.#settings.defaultVault || "Personal",
       item: slugify(ctx.basename ?? "untitled"),
-      field: "Password",
+      field: DEFAULT_FIELD,
     };
   }
 

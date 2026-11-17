@@ -11,7 +11,7 @@ import { t } from "../../i18n";
 import { runPassCli } from "./cli";
 import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
-import { PassReferenceParts, toPassReference } from "./references";
+import { DEFAULT_FIELD, PassReferenceParts, toPassReference } from "./references";
 
 /** Output cap for commands that print one field, such as `item view`. */
 const VIEW_MAX_BUFFER = 64 * 1024;
@@ -69,10 +69,8 @@ export const listItemReferences = async (
           throw e;
         }
       });
-      // Listing doesn't say which fields an item has without fetching each
-      // one, so offer the conventional "password" field. The user can edit
-      // the placeholder to point elsewhere.
-      return titles.map((item) => ({ vault, item, field: "password" }));
+      // The user can edit the placeholder to point at another field.
+      return titles.map((item) => ({ vault, item, field: DEFAULT_FIELD }));
     }),
   );
   return partsByVault.flat().filter((parts) => toPassReference(parts) !== null);
