@@ -40,7 +40,11 @@ const findTitle = (titles: readonly string[], item: string): string | undefined 
   return titles.find((title) => title === item) ?? titles.find((title) => title.toLowerCase() === folded);
 };
 
-/** The Proton Pass operations, each running pass-cli through `run`. */
+/**
+ * The Proton Pass operations the provider uses, each running pass-cli
+ * through `run`. Item listing, note creation and field updates stay
+ * internal, as steps of these.
+ */
 export const createRepository = (run: PassCliRunner) => {
   /** Read one secret field by its `pass://` reference. */
   const readSecret = async (passReference: string): Promise<string> => {
@@ -156,16 +160,5 @@ export const createRepository = (run: PassCliRunner) => {
     await run(["logout"], VIEW_MAX_BUFFER);
   };
 
-  return {
-    readSecret,
-    listVaultNames,
-    listItemTitles,
-    listItemReferences,
-    createEmptyNote,
-    updateField,
-    upsertField,
-    logout,
-  } as const;
+  return { readSecret, listVaultNames, listItemReferences, upsertField, logout } as const;
 };
-
-export type Repository = ReturnType<typeof createRepository>;
