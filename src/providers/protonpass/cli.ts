@@ -123,8 +123,7 @@ const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
   } else if (typeof e.code === "number") {
     return classifyStderr(e.stderr ?? "");
   } else {
-    const reason = e.code ?? e.signal;
-    return new ProtonPassError({ kind: "failed", reason: reason == null ? undefined : String(reason) });
+    return new ProtonPassError({ kind: "failed", reason: (e.code ?? e.signal)?.toString() });
   }
 };
 
