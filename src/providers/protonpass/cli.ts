@@ -147,7 +147,7 @@ const isValidBinaryPath = (p: string): boolean => {
  */
 export const runPassCli = async (
   bin: string,
-  args: string[],
+  args: readonly string[],
   maxBuffer: number,
 ): Promise<string> => {
   if (!isValidBinaryPath(bin)) {

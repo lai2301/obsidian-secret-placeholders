@@ -44,7 +44,8 @@ import {
   parsePlaceholder,
   toPassReference,
 } from "./references";
-import * as repo from "./repository";
+import { runPassCli } from "./cli";
+import { createRepository } from "./repository";
 import { DEFAULTS, ProtonPassSettings, defaultBinaryPath } from "./settings";
 
 /** Upper bound on references returned by {@link ProtonPassProvider.list}. */
@@ -87,6 +88,10 @@ export class ProtonPassProvider implements Provider {
    */
   readonly #cache = new Map<string, { expires: number; value: Promise<unknown> }>();
   readonly #listeners = new Set<() => void>();
+  /** Runs pass-cli at the binary path in the current settings. */
+  readonly #repo = createRepository((args, maxBuffer) =>
+    runPassCli(this.#settings.binaryPath, args, maxBuffer),
+  );
 
   readonly auth: ProviderAuth = {
     status: async (): Promise<ProviderAuthStatus> => {
@@ -120,7 +125,7 @@ export class ProtonPassProvider implements Provider {
     },
     logout: async () => {
       try {
-        await repo.logout(this.#settings.binaryPath);
+        await this.#repo.logout();
       } catch (e) {
         new Notice(describeError(e));
       }
@@ -198,7 +203,7 @@ export class ProtonPassProvider implements Provider {
     return withUserMessages(() => {
       const passReference = requirePassReference(fromRecord(reference.parts));
       return this.#cached(`view:${passReference}`, () =>
-        repo.readSecret(this.#settings.binaryPath, passReference),
+        this.#repo.readSecret(passReference),
       );
     });
   }
@@ -209,7 +214,7 @@ export class ProtonPassProvider implements Provider {
       const parts = fromRecord(reference.parts);
       const passReference = requirePassReference(parts);
       try {
-        await repo.upsertField(this.#settings.binaryPath, parts, value);
+        await this.#repo.upsertField(parts, value);
       } finally {
         // A failed upsert may still have created the item, so drop these
         // either way.
@@ -220,14 +225,14 @@ export class ProtonPassProvider implements Provider {
   }
 
   #listVaults(): Promise<string[]> {
-    return this.#cached("vaults", () => repo.listVaultNames(this.#settings.binaryPath));
+    return this.#cached("vaults", () => this.#repo.listVaultNames());
   }
 
   list(): Promise<ProviderRef[]> {
     return withUserMessages(async () => {
       const wanted = this.#settings.defaultVault.trim();
       const references = await this.#cached("list", () =>
-        repo.listItemReferences(this.#settings.binaryPath, wanted ? [wanted] : undefined),
+        this.#repo.listItemReferences(wanted ? [wanted] : undefined),
       );
       return references
         .slice(0, MAX_LIST_ITEMS)
