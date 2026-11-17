@@ -7,7 +7,6 @@
  * with "-" can't be read as a flag.
  */
 
-import { t } from "../../i18n";
 import { runPassCli } from "./cli";
 import { ProtonPassError } from "./errors";
 import { itemTitles, parseJson, vaultNames } from "./json";
@@ -100,7 +99,7 @@ export const updateField = async (
   value: string,
 ): Promise<void> => {
   if (field.includes("=")) {
-    throw new ProtonPassError("unknown", t("provider.protonpass.equalsInField", { field }));
+    throw new ProtonPassError({ kind: "equals-in-field", field });
   }
 
   await runPassCli(
@@ -144,7 +143,7 @@ export const upsertField = async (
   value: string,
 ): Promise<void> => {
   if (isUnlistableVault(parts.vault)) {
-    throw new ProtonPassError("unknown", t("provider.protonpass.dashVault", { vault: parts.vault }));
+    throw new ProtonPassError({ kind: "dash-vault", vault: parts.vault });
   }
 
   const existing = findTitle(await listItemTitles(bin, parts.vault), parts.item);

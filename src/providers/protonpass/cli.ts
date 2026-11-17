@@ -5,7 +5,6 @@
 
 import { Platform } from "obsidian";
 
-import { t } from "../../i18n";
 import { requireNode } from "../../node";
 import { ProtonPassError, errorMessage } from "./errors";
 
@@ -58,7 +57,7 @@ interface NodeUtilModule {
 /**
  * Promisified `child_process.execFile`, loaded on first use.
  *
- * @throws {ProtonPassError} "unavailable" if Node's modules can't be loaded.
+ * @throws {ProtonPassError} "node-unavailable" if Node's modules can't be loaded.
  */
 const loadExecFile = (): ExecFileAsync => {
   try {
@@ -66,7 +65,7 @@ const loadExecFile = (): ExecFileAsync => {
     const { promisify } = requireNode<NodeUtilModule>("util");
     return promisify(execFile);
   } catch (e) {
-    throw new ProtonPassError("unavailable", errorMessage(e));
+    throw new ProtonPassError({ kind: "node-unavailable", detail: errorMessage(e) });
   }
 };
 
@@ -92,16 +91,20 @@ const classifyStderr = (stderr: string): ProtonPassError => {
     .filter((l) => l.trim() !== "");
 
   if (matchesAny(AUTH_PATTERNS, stderr)) {
-    return new ProtonPassError("not-logged-in", t("provider.protonpass.notLoggedIn"));
+    return new ProtonPassError({ kind: "not-logged-in" });
   } else if (matchesAny(NOT_FOUND_PATTERNS, stderr)) {
     // The useful line ("Could not find item ...") is the last cause, not
     // the first line.
     const cause = [...lines].reverse().find((l) => matchesAny(NOT_FOUND_PATTERNS, l)) ?? "";
-    return new ProtonPassError("not-found", cleanLine(cause));
+    return new ProtonPassError({ kind: "not-found", detail: cleanLine(cause) });
   } else {
     // pass-cli may log timestamped lines before its "Error: ..." summary.
-    const summary = lines.find((l) => l.startsWith("Error:")) ?? lines[0] ?? "";
-    return new ProtonPassError("unknown", cleanLine(summary) || t("provider.protonpass.failed"));
+    const summary = cleanLine(lines.find((l) => l.startsWith("Error:")) ?? lines[0] ?? "");
+    if (summary) {
+      return new ProtonPassError({ kind: "cli-error", detail: summary });
+    } else {
+      return new ProtonPassError({ kind: "failed" });
+    }
   }
 };
 
@@ -110,21 +113,18 @@ const classifyStderr = (stderr: string): ProtonPassError => {
  * error's message, which repeats argv and so can hold a value being saved.
  */
 const classifyExecError = (err: unknown, bin: string): ProtonPassError => {
-  if (!(err instanceof Error)) return new ProtonPassError("unknown", String(err));
+  if (!(err instanceof Error)) return new ProtonPassError({ kind: "cli-error", detail: String(err) });
 
   const e = err as ExecFailure;
   if (e.code === "ENOENT" || e.code === "EACCES") {
-    return new ProtonPassError("unavailable", t("provider.protonpass.binaryNotFound", { path: bin }));
+    return new ProtonPassError({ kind: "binary-not-found", path: bin });
   } else if (e.killed) {
-    return new ProtonPassError("unknown", t("provider.protonpass.timedOut"));
+    return new ProtonPassError({ kind: "timed-out" });
   } else if (typeof e.code === "number") {
     return classifyStderr(e.stderr ?? "");
   } else {
     const reason = e.code ?? e.signal;
-    return new ProtonPassError(
-      "unknown",
-      reason == null ? t("provider.protonpass.failed") : t("provider.protonpass.failedWithReason", { reason }),
-    );
+    return new ProtonPassError({ kind: "failed", reason: reason == null ? undefined : String(reason) });
   }
 };
 
@@ -151,7 +151,7 @@ export const runPassCli = async (
   maxBuffer: number,
 ): Promise<string> => {
   if (!isValidBinaryPath(bin)) {
-    throw new ProtonPassError("unavailable", t("provider.protonpass.invalidBinary"));
+    throw new ProtonPassError({ kind: "invalid-binary" });
   }
 
   const execFile = loadExecFile();

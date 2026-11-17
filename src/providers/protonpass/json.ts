@@ -3,13 +3,12 @@
  * stable, and anything else throws rather than guessing.
  */
 
-import { t } from "../../i18n";
 import { ProtonPassError } from "./errors";
 
 type Json = Record<string, unknown>;
 
 const unexpectedOutput = (): ProtonPassError =>
-  new ProtonPassError("unknown", t("provider.protonpass.unexpectedOutput"));
+  new ProtonPassError({ kind: "unexpected-output" });
 
 const isObject = (v: unknown): v is Json =>
   typeof v === "object" && v !== null && !Array.isArray(v);

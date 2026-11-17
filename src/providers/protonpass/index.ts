@@ -32,7 +32,8 @@ import {
   ProviderAuthStatus,
   ProviderRef,
 } from "../types";
-import { ProtonPassError, errorMessage } from "./errors";
+import { ProtonPassError } from "./errors";
+import { describeError, withUserMessages } from "./messages";
 import {
   DEFAULT_FIELD,
   PLACEHOLDER_RE,
@@ -59,12 +60,12 @@ const slugify = (s: string): string =>
 /**
  * The `pass://` reference for `parts`.
  *
- * @throws {ProtonPassError} "not-found" if the parts can't form a valid reference.
+ * @throws {ProtonPassError} "invalid-reference" if the parts can't form a valid reference.
  */
 const requirePassReference = (parts: PassReferenceParts): string => {
   const passReference = toPassReference(parts);
   if (!passReference) {
-    throw new ProtonPassError("not-found", t("provider.protonpass.invalidReference"));
+    throw new ProtonPassError({ kind: "invalid-reference" });
   }
 
   return passReference;
@@ -111,7 +112,7 @@ export class ProtonPassProvider implements Provider {
         if (e instanceof ProtonPassError && e.kind === "not-logged-in") {
           new Notice(t("provider.protonpass.loginHint"), 10_000);
         } else {
-          new Notice(errorMessage(e));
+          new Notice(describeError(e));
         }
       }
       this.#ctx.notifyAuthChanged(this.id);
@@ -121,7 +122,7 @@ export class ProtonPassProvider implements Provider {
       try {
         await repo.logout(this.#settings.binaryPath);
       } catch (e) {
-        new Notice(errorMessage(e));
+        new Notice(describeError(e));
       }
       this.clearCache();
       this.#ctx.notifyAuthChanged(this.id);
@@ -193,39 +194,45 @@ export class ProtonPassProvider implements Provider {
     }
   }
 
-  async readKey(reference: ProviderRef): Promise<string> {
-    const passReference = requirePassReference(fromRecord(reference.parts));
-    return this.#cached(`view:${passReference}`, () =>
-      repo.readSecret(this.#settings.binaryPath, passReference),
-    );
+  readKey(reference: ProviderRef): Promise<string> {
+    return withUserMessages(() => {
+      const passReference = requirePassReference(fromRecord(reference.parts));
+      return this.#cached(`view:${passReference}`, () =>
+        repo.readSecret(this.#settings.binaryPath, passReference),
+      );
+    });
   }
 
   /** Set the secret at `reference` to `value`, creating the item if needed. */
-  async writeKey(reference: ProviderRef, value: string): Promise<void> {
-    const parts = fromRecord(reference.parts);
-    const passReference = requirePassReference(parts);
-    try {
-      await repo.upsertField(this.#settings.binaryPath, parts, value);
-    } finally {
-      // A failed upsert may still have created the item, so drop these
-      // either way.
-      this.#cache.delete(`view:${passReference}`);
-      this.#cache.delete("list");
-    }
+  writeKey(reference: ProviderRef, value: string): Promise<void> {
+    return withUserMessages(async () => {
+      const parts = fromRecord(reference.parts);
+      const passReference = requirePassReference(parts);
+      try {
+        await repo.upsertField(this.#settings.binaryPath, parts, value);
+      } finally {
+        // A failed upsert may still have created the item, so drop these
+        // either way.
+        this.#cache.delete(`view:${passReference}`);
+        this.#cache.delete("list");
+      }
+    });
   }
 
   #listVaults(): Promise<string[]> {
     return this.#cached("vaults", () => repo.listVaultNames(this.#settings.binaryPath));
   }
 
-  async list(): Promise<ProviderRef[]> {
-    const wanted = this.#settings.defaultVault.trim();
-    const references = await this.#cached("list", () =>
-      repo.listItemReferences(this.#settings.binaryPath, wanted ? [wanted] : undefined),
-    );
-    return references
-      .slice(0, MAX_LIST_ITEMS)
-      .map((parts) => ({ provider: this.id, raw: formatPlaceholder(parts), parts }));
+  list(): Promise<ProviderRef[]> {
+    return withUserMessages(async () => {
+      const wanted = this.#settings.defaultVault.trim();
+      const references = await this.#cached("list", () =>
+        repo.listItemReferences(this.#settings.binaryPath, wanted ? [wanted] : undefined),
+      );
+      return references
+        .slice(0, MAX_LIST_ITEMS)
+        .map((parts) => ({ provider: this.id, raw: formatPlaceholder(parts), parts }));
+    });
   }
 
   clearCache(): void {
