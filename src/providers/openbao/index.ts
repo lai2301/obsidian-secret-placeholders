@@ -12,6 +12,7 @@ import {
   ProviderRef,
 } from "../types";
 import { renderAuthStatusRow } from "../../authStatusRow";
+import { slugify } from "../../common";
 import { BaoError, OpenBaoClient } from "./client";
 import { OpenBaoAuthState, PersistedAuth } from "./auth";
 import {
@@ -41,14 +42,6 @@ export const OPENBAO_DEFAULTS: OpenBaoSettings = {
 // {{bao:<mount>/<path>#<key>}}
 const PLACEHOLDER_RE =
   /\{\{bao:([A-Za-z0-9_-]+)\/([A-Za-z0-9_\-/.]+)#([A-Za-z0-9_.-]+)\}\}/g;
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
 
 export class OpenBaoProvider implements Provider {
   readonly id = "bao";

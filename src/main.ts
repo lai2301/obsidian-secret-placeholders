@@ -1,4 +1,4 @@
-import { Plugin } from "obsidian";
+import { Platform, Plugin } from "obsidian";
 
 import { registerCommands } from "./commands";
 import { registerEditorContextMenu } from "./contextMenu";
@@ -10,6 +10,7 @@ import { buildPostProcessor } from "./postProcessor";
 import { BitwardenProvider } from "./providers/bitwarden";
 import { OpenBaoProvider } from "./providers/openbao";
 import { OnePasswordProvider } from "./providers/onepassword";
+import { ProtonPassProvider } from "./providers/protonpass";
 import { ProviderRegistry } from "./providers/registry";
 import { PluginContext } from "./providers/types";
 import {
@@ -106,6 +107,12 @@ export default class SecretPlaceholdersPlugin extends Plugin {
       const vw = new BitwardenProvider(ctx);
       await vw.init();
       this.registry.register(vw);
+    }
+    // pass-cli is a local process, so Proton Pass only exists on desktop.
+    if (enabled.pp !== false && Platform.isDesktopApp) {
+      const pp = new ProtonPassProvider(ctx);
+      await pp.init();
+      this.registry.register(pp);
     }
   }
 

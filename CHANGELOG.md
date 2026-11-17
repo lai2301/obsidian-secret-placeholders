@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Proton Pass provider (desktop only).** Placeholders of the form
+  `{{pp:<vault>/<item>#<field>}}` resolve through the official
+  [Proton Pass CLI](https://protonpass.github.io/pass-cli/) (`pass-cli`),
+  which owns the session. Log in with `pass-cli login` in a terminal and set
+  the binary's absolute path in the provider settings. Secrets can be read,
+  listed for autocomplete and the secret browser, saved from a selection and
+  edited. Saving sets the field on the item, adding it as a hidden custom
+  field if needed, and creates the item as an empty note first if no item
+  with that title exists. The provider is enabled by default, including for
+  existing installs, and is never registered on mobile.
+
+### Security
+- `pass-cli` only accepts a value being saved as a command-line argument, so
+  other programs running as the same user can see it while the save runs.
+  Errors shown by the provider never include `pass-cli`'s stdout or its
+  command line. Documented in `docs/providers.md`.
+
 ## 0.7.3
 
 ### Fixed

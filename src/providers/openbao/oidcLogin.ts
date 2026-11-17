@@ -13,6 +13,7 @@
 import { Platform, requestUrl } from "obsidian";
 
 import { t } from "../../i18n";
+import { requireNode } from "../../common";
 
 export interface OidcLoginOptions {
   baseUrl: string;
@@ -136,15 +137,6 @@ export async function performOidcLogin(
 interface Callback {
   state: string;
   code: string;
-}
-
-// Node interop is desktop-only and reached through Electron's require(). We
-// type require() as returning `unknown` and describe only the narrow surface we
-// use, so these casts stay sound without depending on @types/node resolution.
-function requireNode<T>(id: string): T {
-  const req = (window as unknown as { require: (id: string) => unknown })
-    .require;
-  return req(id) as T;
 }
 
 interface NodeHttpResponse {

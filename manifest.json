@@ -3,7 +3,7 @@
   "name": "Secret Placeholders",
   "version": "0.7.3",
   "minAppVersion": "1.7.2",
-  "description": "Embed password-manager secrets in notes as placeholders so the .md never contains the actual credential. Supports OpenBao/Vault, 1Password Connect, and Bitwarden/Vaultwarden.",
+  "description": "Embed password-manager secrets in notes as placeholders so the .md never contains the actual credential. Supports OpenBao/Vault, 1Password Connect, Bitwarden/Vaultwarden, and Proton Pass.",
   "author": "lai2301",
   "authorUrl": "https://github.com/lai2301",
   "isDesktopOnly": false
